@@ -1,0 +1,25 @@
+# Dependencies
+/node_modules
+
+# Configuration
+proxies.txt
+
+# Output files
+reviews.json
+reviews.html
+extracted-reviews.json
+intermediate-analysis.json
+analysis-report.md
+analysis-report.zip
+
+# Screenshots
+screenshots/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db 

@@ -1,0 +1,31 @@
+{
+  "name": "google-maps-puppeteer",
+  "version": "1.0.0",
+  "description": "Puppeteer project to interact with Google Maps and take screenshots",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "test-captcha": "node test-captcha.js"
+  },
+  "keywords": [
+    "puppeteer",
+    "google-maps",
+    "automation",
+    "screenshot"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.10.0",
+    "cheerio": "^1.1.0",
+    "jsdom": "latest",
+    "node-capsolver": "latest",
+    "puppeteer": "^21.6.1",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.4"
+  }
+}
