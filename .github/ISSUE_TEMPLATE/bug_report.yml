@@ -1,0 +1,51 @@
+name: Bug Report
+description: Report a bug in the scraper, analyzer, or CLI
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      placeholder: When I run `node index.js --fast`, the browser crashes with...
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Run command `...`
+        2. See error
+    validations:
+      required: true
+  - type: input
+    id: url
+    attributes:
+      label: Maps URL (if applicable)
+      placeholder: https://maps.app.goo.gl/...
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / screenshots
+      render: shell
+  - type: input
+    id: node-version
+    attributes:
+      label: Node version
+      placeholder: v20.10.0
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      placeholder: macOS 14.4
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched existing issues
+          required: true
