@@ -1,77 +1,253 @@
-# Google Maps Review Analyzer
+<div align="center">
 
-This project is a Node.js-based web scraper that extracts reviews for a specific location from Google Maps, performs a topic and sentiment analysis on them, and generates a detailed report in Markdown format.
+# 🗺️ Google Maps Review Analyzer
 
-It uses `puppeteer-extra` with the `stealth` plugin to avoid bot detection and rotates through a list of proxies to handle IP blocks and CAPTCHAs.
+**Stealth-scrape reviews from any Google Maps place, then turn them into an executive-grade sentiment report — fully local, powered by Ollama.**
 
-## Features
+</div>
 
--   **Stealthy Scraping**: Navigates Google Maps avoiding bot-detection using Puppeteer Stealth.
--   **Proxy Rotation**: Automatically cycles through a list of proxies to avoid rate-limiting and IP bans.
--   **Dynamic Scrolling**: Intelligently scrolls the reviews page to load all available reviews.
--   **Data Extraction**: Parses review data including the author's name, post time, star rating, and review text.
--   **Automated Analysis**: Runs a follow-up script (`topic-analysis.js`) to perform sentiment and topic analysis on the extracted reviews.
--   **Report Generation**: Creates a final `analysis-report.md` with a summary of the findings.
+<div align="center">
 
-## Technologies Used
+![Node](https://img.shields.io/badge/node-%3E%3D18-339933?style=for-the-badge&logo=node.js&logoColor=white)
+![Puppeteer](https://img.shields.io/badge/puppeteer--extra-stealth-40B5A4?style=for-the-badge&logo=puppeteer&logoColor=white)
+![Ollama](https://img.shields.io/badge/ollama-local_AI-000000?style=for-the-badge&logo=ollama&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-22c55e?style=for-the-badge)
+![No telemetry](https://img.shields.io/badge/telemetry-none-9aa5ce?style=for-the-badge)
 
--   **Node.js**
--   **Puppeteer-extra** & **puppeteer-extra-plugin-stealth**
--   **Axios** (for the analysis script)
--   **Ollama** (for the analysis script)
+</div>
 
-## Prerequisites
+---
 
--   Node.js (v18 or higher recommended)
--   NPM
+## ❓ What is this?
 
-## Setup and Configuration
+A three-stage, end-to-end pipeline that takes a Google Maps place URL and returns a **business-grade customer feedback report**.
 
-1.  **Clone the repository:**
-    ```bash
-    git clone <repository-url>
-    cd google-maps-review-analyzer
-    ```
+```
+Google Maps URL ──► stealth scrape ──► review JSON ──► Ollama LLM ──► analysis-report.md
+                  (Puppeteer +       (reviews.json)   (gemma2 + qwen3)   (Markdown)
+                   proxy rotation)
+```
 
-2.  **Install dependencies:**
-    ```bash
-    npm install
-    ```
+No cloud APIs. No data leaves your machine. The LLM runs locally via [Ollama](https://ollama.com) — your scraped reviews never touch a third party.
 
-3.  **Create and configure `proxies.txt`:**
+---
 
-    This project requires proxies to function correctly and bypass Google's security.
+## ✨ Features
 
-    -   Create a file named `proxies.txt` in the root of the project.
-    -   Add your proxy servers to this file, one per line.
-    -   The required format is `http://username:password@host:port`.
+- 🕶️ **Stealth scraping** — `puppeteer-extra` + the stealth plugin avoids the most common bot-detection fingerprints.
+- 🔁 **Proxy rotation** — Cycles through `proxies.txt`; on CAPTCHA it screenshots the page, moves to the next proxy, and retries.
+- 📜 **Dynamic scrolling** — Auto-scrolls the reviews pane until the height stabilizes (no fragile "scroll N times" magic numbers).
+- 🧠 **Two-pass LLM analysis** — Fast `gemma2:2b` extracts topics + per-review sentiment in parallel; heavier `qwen3:8b` writes the executive summary.
+- 📊 **Keyword sentiment (offline)** — `analyze.js` ships as a zero-dependency fallback that does basic positive/negative scoring without Ollama.
+- 📝 **Structured Markdown report** — Executive summary, sentiment breakdown, top-10 topic table, "what's working" / "areas to improve" sections, actionable recommendations.
+- 💾 **Checkpointed intermediate output** — `intermediate-analysis.json` is written after Phase 1 so you can re-run only the report step.
 
-    **Example `proxies.txt`:**
-    ```
-    http://user1:pass1@proxy.example.com:8080
-    http://user2:pass2@proxy.example.com:8081
-    ```
-    > **Note:** The `proxies.txt` file is included in `.gitignore` and will not be committed to the repository.
+---
 
-## Usage
+## 🏗️ Architecture
 
-Once the setup is complete, you can run the main script from the project's root directory:
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  index.js  (puppeteer-extra + stealth)                                │
+│                                                                       │
+│  for each proxy in proxies.txt:                                       │
+│      ┌──────────────────────────────────────────┐                     │
+│      │ launch headless browser → authenticate → │                     │
+│      │ goto Maps URL → click "Reviews" tab →    │                     │
+│      │ scroll until stable → extract nodes  →   │                     │
+│      │ write reviews.json + reviews.html        │                     │
+│      └──────────────────────────────────────────┘                     │
+│                  │ CAPTCHA?   → screenshot, try next proxy            │
+│                  ▼                                                     │
+│          reviews.json                                                   │
+└──────────────────────────────────────────────────────────────────────┘
+                  │
+                  ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│  topic-analysis.js  (Ollama, two-phase)                                 │
+│                                                                       │
+│   Phase 1  ── gemma2:2b   ── per-review topics + sentiment (parallel) │
+│             └─► intermediate-analysis.json                            │
+│                                                                       │
+│   Phase 2  ── qwen3:8b    ── write full report from aggregated data  │
+│             └─► analysis-report.md                                    │
+└──────────────────────────────────────────────────────────────────────┘
+
+  analyze.js  ──── (optional) simple keyword sentiment, no LLM needed
+```
+
+---
+
+## ⚡ Quick start
+
+### Prerequisites
+
+| What | Why |
+|---|---|
+| **Node.js 18+** | Runs the scraper |
+| **Puppeteer Chromium** | Pulled automatically via `npm install` (~170 MB) |
+| **Ollama** *(optional, recommended)* | Local LLM for the report stage — get it at <https://ollama.com> |
+| **Proxies** *(required for real use)* | Residential or mobile proxies; the scraper cannot bypass Google's defenses from a datacenter IP |
+
+### Install
+
+```bash
+git clone https://github.com/404Piyush/google-maps-review-analyzer.git
+cd google-maps-review-analyzer
+npm install
+```
+
+### Configure
+
+Create `proxies.txt` in the project root (one per line):
+
+```
+http://user:pass@residential.proxy-a.com:8080
+http://user:pass@residential.proxy-b.com:8080
+http://user:pass@mobile.proxy-c.com:3128
+```
+
+> ⚠️ `proxies.txt` is gitignored. Datacenter proxies will hit CAPTCHAs almost immediately — use residential or mobile.
+
+### Run the full pipeline
 
 ```bash
 node index.js
 ```
 
-The script will perform the following actions:
-1.  Launch a Puppeteer browser using a proxy from `proxies.txt`.
-2.  Navigate to the specified Google Maps URL.
-3.  Click through to the reviews section and scroll to load all of them.
-4.  Save the raw HTML to `reviews.html` and the extracted data to `reviews.json`.
-5.  Automatically trigger the `topic-analysis.js` script to generate the `analysis-report.md`.
+The scraper picks a proxy, navigates to the hard-coded `GOOGLE_MAPS_URL` in `index.js`, scrolls to load all reviews, writes `reviews.json`, then automatically invokes `topic-analysis.js`.
 
-## Output Files
+To run a different place, edit the constant at the top of `index.js`:
 
--   `reviews.json`: A JSON array of the extracted review objects.
--   `reviews.html`: The raw HTML of the final reviews page for debugging.
--   `intermediate-analysis.json`: A temporary file from the analysis script.
--   `analysis-report.md`: The final, generated report with insights from the reviews.
--   `screenshots/`: Contains screenshots of CAPTCHA pages or successful runs for debugging. 
+```js
+const GOOGLE_MAPS_URL = 'https://maps.app.goo.gl/<your-place-id>';
+```
+
+### Run just the analysis (you already have `reviews.json`)
+
+```bash
+node topic-analysis.js    # two-pass Ollama report
+node analyze.js           # offline keyword sentiment only
+```
+
+---
+
+## 📦 Output files
+
+| File | When | What it is |
+|---|---|---|
+| `reviews.json` | After scrape | Structured review array: `{ name, time, stars, text }` |
+| `reviews.html` | After scrape | Raw rendered HTML of the final reviews pane (debug) |
+| `intermediate-analysis.json` | After Phase 1 | Every review with topics + sentiment attached |
+| `analysis-report.md` | After Phase 2 | The final executive report — open this |
+| `screenshots/*.png` | Per proxy | CAPTCHA pages or successful runs (debug) |
+
+---
+
+## 📝 Sample report excerpt
+
+```markdown
+# Customer Feedback Analysis
+
+## 1. Executive Summary
+Across 412 reviews, sentiment skews positive (71% / 18% / 11%). The most
+discussed themes are *service speed*, *staff friendliness*, and *wait time*,
+with service speed generating the highest volume of both praise and complaint.
+
+## 3. Deep Dive: Key Themes
+
+### What's Working Well
+- **Staff friendliness** — Reception staff are repeatedly called out by name...
+- **Atmosphere** — "cozy", "intimate", "great for dates" dominate...
+
+### Areas for Improvement
+- **Wait time on weekends** — Average perceived wait skews long...
+```
+
+---
+
+## 🧪 Configuration
+
+Edit the constants near the top of `topic-analysis.js`:
+
+| Constant | Default | Notes |
+|---|---|---|
+| `OLLAMA_API_URL` | `http://localhost:11434/api/generate` | Point at a remote Ollama if needed |
+| `FAST_MODEL` | `gemma2:2b` | Per-review pass; small and fast |
+| `POWERFUL_MODEL` | `qwen3:8b` | Final report pass; swap for `llama3:8b`, `mistral`, etc. |
+| `CONCURRENCY_LIMIT` | `50` | Parallel review calls against Ollama |
+
+Pull the models once before first run:
+
+```bash
+ollama pull gemma2:2b
+ollama pull qwen3:8b
+```
+
+---
+
+## 🛠️ Project layout
+
+```
+google-maps-review-analyzer/
+├── index.js                  # Stage 1 — stealth scraper
+├── analyze.js                # Stage 2 alt — offline keyword sentiment
+├── topic-analysis.js         # Stage 2/3 — Ollama two-pass report
+├── proxies.txt               # (you create this — gitignored)
+├── package.json
+├── .gitignore
+├── reviews.json              # generated
+├── reviews.html              # generated
+├── intermediate-analysis.json# generated
+└── analysis-report.md        # generated — the deliverable
+```
+
+---
+
+## 🧯 Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `Could not find a review element after 5 retries` | Maps page hasn't loaded reviews pane, or HTML structure changed | Confirm Maps URL is for a place with reviews; check `reviews.html` |
+| Every proxy hits `sorry/index` CAPTCHA | Datacenter IPs, or sticky session | Switch to residential/mobile; avoid reusing the same proxy across runs |
+| `Error connecting to Ollama` | Ollama not running, or model not pulled | `ollama serve` in another terminal; `ollama pull gemma2:2b && ollama pull qwen3:8b` |
+| Empty `analysis-report.md` | `reviews.json` had no `.text` | Phase 1 only processes reviews with non-empty text — check `reviews.json` |
+| Browser opens but immediately closes | Missing shared libs on Linux | `apt-get install -y ca-certificates fonts-liberation libasound2 libgbm1 libnss3` |
+
+---
+
+## ⚖️ Ethics & legality
+
+This repository is a **technical demonstration** of public-page scraping and on-device language modeling. Things to be aware of before you use it:
+
+- Google's [Terms of Service](https://policies.google.com/terms) prohibit automated access to most of Maps' content. The official [Places API](https://developers.google.com/maps/documentation/places/web-service/overview) is the supported way to get review data at scale.
+- Scraping personal data (reviewer names + content) may fall under GDPR / CCPA depending on jurisdiction. Pseudonymize before publishing any analysis.
+- Use residential/mobile proxies, respect `robots.txt` where applicable, don't hammer the endpoint, and store results securely.
+- The bundled `reCAPTCHA v2 Bypass with Capsolver_.txt` is a **third-party service reference** retained from the original implementation. Running automated CAPTCHA bypass against Google Maps is almost certainly a ToS violation; remove it if you intend to run the tool in production.
+
+This repo is for **educational use**. The author is not responsible for misuse.
+
+---
+
+## 🤝 Contributing
+
+Issues and PRs welcome for:
+
+- New scraper strategies (API fallbacks, lighter Puppeteer use)
+- Better default Ollama prompts
+- New report sections (per-aspect ratings, time-series trends)
+- Output formats (JSON, HTML dashboard, CSV)
+
+Please open an issue before sending large PRs.
+
+---
+
+## 📜 License
+
+[MIT](./LICENSE) — Piyush Utkar, 2025.
+
+---
+
+## 👤 Author
+
+**Piyush Utkar** — [github.com/404Piyush](https://github.com/404Piyush) · [404piyush.me](https://404piyush.me) · [@PiyushUtkar](https://x.com/PiyushUtkar)

@@ -4,9 +4,14 @@
 # Configuration
 proxies.txt
 
+# Environment
+.env
+.env.local
+
 # Output files
 reviews.json
 reviews.html
+reviews.txt
 extracted-reviews.json
 intermediate-analysis.json
 analysis-report.md

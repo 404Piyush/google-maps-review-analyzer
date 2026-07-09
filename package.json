@@ -1,21 +1,45 @@
 {
-  "name": "google-maps-puppeteer",
-  "version": "1.0.0",
-  "description": "Puppeteer project to interact with Google Maps and take screenshots",
+  "name": "google-maps-review-analyzer",
+  "version": "1.1.0",
+  "description": "Stealth-scrape Google Maps reviews via Puppeteer + proxy rotation, then generate an executive-grade sentiment report using local Ollama LLMs.",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
+    "scrape": "node index.js",
+    "analyze:llm": "node topic-analysis.js",
+    "analyze:basic": "node analyze.js",
     "dev": "node --watch index.js",
-    "test-captcha": "node test-captcha.js"
+    "test:captcha": "node test-captcha.js"
   },
   "keywords": [
     "puppeteer",
+    "puppeteer-extra",
+    "stealth",
+    "web-scraping",
     "google-maps",
-    "automation",
-    "screenshot"
+    "reviews",
+    "sentiment-analysis",
+    "ollama",
+    "llm",
+    "automation"
   ],
-  "author": "",
+  "author": {
+    "name": "Piyush Utkar",
+    "email": "piyushutkar123@gmail.com",
+    "url": "https://404piyush.me"
+  },
+  "homepage": "https://github.com/404Piyush/google-maps-review-analyzer#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/404Piyush/google-maps-review-analyzer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/404Piyush/google-maps-review-analyzer/issues"
+  },
   "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "axios": "^1.10.0",
     "cheerio": "^1.1.0",
