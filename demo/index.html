@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Maps Review Analyzer — Live Demo</title>
+    <meta name="description" content="Scrape or fetch Google Maps reviews, then generate a data-driven sentiment report using local LLMs.">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="hero">
+    <div class="container">
+        <div class="hero-tag">LIVE DEMO</div>
+        <h1>Google Maps<br><span class="accent">Review Analyzer</span></h1>
+        <p class="hero-sub">
+            Stealth-scrape reviews with Puppeteer <em>or</em> pull them via the official Places API, then ship a data-driven sentiment report from a local LLM.
+        </p>
+        <div class="hero-actions">
+            <a href="https://github.com/404Piyush/google-maps-review-analyzer" class="btn btn-primary">★ GitHub</a>
+            <a href="#showcase" class="btn btn-ghost">See it in action ↓</a>
+        </div>
+        <div class="hero-pills">
+            <span class="pill">⚡ Batched LLM inference</span>
+            <span class="pill">🧠 GPU auto-detect</span>
+            <span class="pill">🔁 URL cache</span>
+            <span class="pill">🌐 OpenRouter-ready</span>
+            <span class="pill">🪶 Zero proxy needed via Places API</span>
+        </div>
+    </div>
+</header>
+
+<main class="container">
+
+<section id="showcase" class="showcase">
+    <h2>📊 Pre-computed showcase</h2>
+    <p class="muted">A real run against a sample restaurant — 187 reviews pulled via Places API, analyzed with <code>gemma2:2b</code>.</p>
+
+    <div class="grid-2">
+        <div class="card">
+            <h3>Sentiment breakdown</h3>
+            <canvas id="sentimentChart" height="220"></canvas>
+        </div>
+        <div class="card">
+            <h3>Top topics by mention</h3>
+            <canvas id="topicsChart" height="220"></canvas>
+        </div>
+    </div>
+
+    <div class="card report">
+        <h3>Executive report (markdown)</h3>
+        <div id="report" class="markdown"></div>
+    </div>
+
+    <details class="card">
+        <summary><b>📄 Input data — preview</b></summary>
+        <pre id="reviewsPreview" class="reviews"></pre>
+    </details>
+</section>
+
+<section id="pipelines" class="pipelines">
+    <h2>🛠️ Three ways to run it</h2>
+    <div class="grid-3">
+        <div class="card mode">
+            <div class="mode-badge">①</div>
+            <h3>Scrape</h3>
+            <p>Puppeteer + stealth + rotating proxies. Falls back across proxies in parallel.</p>
+            <pre><code>node index.js --parallel-proxies=2 --fast</code></pre>
+        </div>
+        <div class="card mode">
+            <div class="mode-badge">②</div>
+            <h3>Places API</h3>
+            <p>Official Google Places API. No scraping, no proxies. $200/mo free credit.</p>
+            <pre><code>GOOGLE_PLACES_API_KEY=... node places-api.js --text-search="Joe's Pizza"</code></pre>
+        </div>
+        <div class="card mode">
+            <div class="mode-badge">③</div>
+            <h3>Analyze</h3>
+            <p>Batched Ollama or OpenRouter free models. Auto-detects GPU vs CPU.</p>
+            <pre><code>node topic-analysis.js --model=fast --batch-size=10</code></pre>
+        </div>
+    </div>
+</section>
+
+<section id="benchmarks" class="benchmarks">
+    <h2>⚡ Benchmarks (v1.2.0)</h2>
+    <p class="muted">200 reviews, on commodity hardware. GPU = free Colab T4. CPU = M1 MacBook.</p>
+    <table class="benchmarks-table">
+        <thead>
+            <tr><th>Stage</th><th>v1.1.0</th><th>v1.2.0</th><th>Speedup</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>Scrape (good proxy)</td><td>~90s</td><td>~25s</td><td class="ok">3.6×</td></tr>
+            <tr><td>Scrape (all proxies)</td><td>~5min</td><td>~50s</td><td class="ok">6×</td></tr>
+            <tr><td>Analyze (CPU, 200 rev)</td><td>~6min</td><td>~75s</td><td class="ok">4.8×</td></tr>
+            <tr><td>Analyze (T4 GPU, 200 rev)</td><td>~3min</td><td>~40s</td><td class="ok">4.5×</td></tr>
+        </tbody>
+    </table>
+</section>
+
+<section id="try-it" class="cta">
+    <h2>🚀 Try it yourself</h2>
+    <div class="cta-row">
+        <a class="btn btn-primary" href="https://github.com/404Piyush/google-maps-review-analyzer/blob/main/notebooks/colab.ipynb" target="_blank" rel="noopener">▶ Open in Colab (free T4 GPU)</a>
+        <a class="btn btn-ghost" href="https://github.com/404Piyush/google-maps-review-analyzer/blob/main/notebooks/lightning-ai.md" target="_blank" rel="noopener">⚡ Lightning AI guide</a>
+        <a class="btn btn-ghost" href="https://github.com/404Piyush/google-maps-review-analyzer#quick-start" target="_blank" rel="noopener">📖 Local install</a>
+    </div>
+</section>
+
+</main>
+
+<footer class="container footer">
+    <p>Built by <a href="https://404piyush.me">Piyush Utkar</a> · <a href="https://github.com/404Piyush/google-maps-review-analyzer">Source on GitHub</a> · MIT Licensed</p>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

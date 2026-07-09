@@ -1,316 +1,273 @@
+require('dotenv').config();
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
 const { devices } = require('puppeteer');
 
 puppeteer.use(StealthPlugin());
 
-const GOOGLE_MAPS_URL = 'https://maps.app.goo.gl/CCGmfPudoLzPoK2a7';
-const SCREENSHOTS_DIR = path.join(__dirname, 'screenshots');
-const PROXIES_FILE = path.join(__dirname, 'proxies.txt');
+const ARGS = process.argv.slice(2);
+const FLAG = (name) => ARGS.find(a => a.startsWith(`--${name}=`))?.split('=').slice(1).join('=');
+const HAS = (name) => ARGS.includes(`--${name}`);
 
-function parseProxy(proxyUrl) {
-    if (!proxyUrl.startsWith('http://')) {
-        return null;
-    }
-    try {
-        const url = new URL(proxyUrl);
-        return {
-            server: url.host,
-            username: url.username,
-            password: url.password,
-        };
-    } catch (error) {
-        console.error(`Error parsing proxy URL: ${proxyUrl}`, error);
-        return null;
-    }
-}
+const CONFIG = {
+    url: process.env.GOOGLE_MAPS_URL || FLAG('url') || 'https://maps.app.goo.gl/CCGmfPudoLzPoK2a7',
+    parallelProxies: Number(process.env.PARALLEL_PROXIES || FLAG('parallel-proxies') || 2),
+    navTimeoutMs: Number(process.env.NAV_TIMEOUT_MS || 30000),
+    navSettleMs: Number(process.env.NAV_SETTLE_MS || 1500),
+    clickDelayMs: Number(process.env.CLICK_DELAY_MS || 1500),
+    scrollIntervalMs: Number(process.env.SCROLL_INTERVAL_MS || 1800),
+    maxStableChecks: Number(process.env.MAX_STABLE_CHECKS || 3),
+    headless: !HAS('headed'),
+    fast: HAS('fast'),
+    skipProxy: HAS('no-proxy'),
+    proxyFile: path.join(__dirname, 'proxies.txt'),
+    outDir: path.join(__dirname, 'output'),
+    cacheFile: path.join(__dirname, '.url-cache.json'),
+    cacheTtlHours: Number(process.env.CACHE_TTL_HOURS || 24),
+};
+
+const SCREENSHOTS_DIR = path.join(CONFIG.outDir, 'screenshots');
 
 function getTimestamp() {
     return new Date().toISOString().replace(/[:.]/g, '-');
 }
 
-async function autoScroll(page) {
-    await page.evaluate(async () => {
-        const findScrollableParent = (element) => {
-            let parent = element.parentElement;
-            while (parent) {
-                if (parent === document.body) return document.body;
-                const style = window.getComputedStyle(parent);
-                if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
-                    return parent;
-                }
-                parent = parent.parentElement;
+function parseProxy(proxyUrl) {
+    if (!proxyUrl.startsWith('http://')) return null;
+    try {
+        const url = new URL(proxyUrl);
+        return { server: url.host, username: url.username, password: url.password, raw: proxyUrl };
+    } catch {
+        return null;
+    }
+}
+
+function loadProxies() {
+    if (CONFIG.skipProxy) return [];
+    if (!fs.existsSync(CONFIG.proxyFile)) return [];
+    return fs.readFileSync(CONFIG.proxyFile, 'utf-8').split(/\r?\n/).filter(Boolean).map(parseProxy).filter(Boolean);
+}
+
+async function loadCache() {
+    try { return JSON.parse(await fsp.readFile(CONFIG.cacheFile, 'utf-8')); }
+    catch { return {}; }
+}
+
+async function saveCache(cache) {
+    await fsp.writeFile(CONFIG.cacheFile, JSON.stringify(cache, null, 2));
+}
+
+function isCacheFresh(entry) {
+    if (!entry) return false;
+    const ageMs = Date.now() - new Date(entry.cachedAt).getTime();
+    return ageMs < CONFIG.cacheTtlHours * 60 * 60 * 1000;
+}
+
+async function tryProxy(proxyDetails) {
+    const label = proxyDetails?.server || 'no-proxy';
+    const log = (msg) => console.log(`[${label}] ${msg}`);
+    let browser = null;
+    try {
+        log('Launching browser');
+        const args = [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-infobars',
+            '--disable-features=IsolateOrigins,site-per-process',
+            '--disable-blink-features=AutomationControlled',
+        ];
+        if (proxyDetails?.server) args.unshift(`--proxy-server=${proxyDetails.server}`);
+        browser = await puppeteer.launch({ headless: CONFIG.headless, args });
+        const page = await browser.newPage();
+        page.on('console', msg => log(`[Browser] ${msg.text()}`));
+
+        log('Emulating Pixel 2 XL');
+        await page.emulate(devices['Pixel 2 XL']);
+
+        if (proxyDetails?.username) {
+            log('Authenticating proxy');
+            await page.authenticate({ username: proxyDetails.username, password: proxyDetails.password });
+        }
+
+        log(`Navigating: ${CONFIG.url}`);
+        await page.goto(CONFIG.url, { waitUntil: 'domcontentloaded', timeout: CONFIG.navTimeoutMs });
+
+        try {
+            await page.waitForSelector('.hjmQqc', { timeout: CONFIG.navTimeoutMs });
+        } catch {
+            const url = page.url();
+            if (url.includes('sorry') || await page.$('iframe[src*="api2/anchor"]')) {
+                log('CAPTCHA detected');
+                if (!CONFIG.fast) await page.screenshot({ path: path.join(SCREENSHOTS_DIR, `captcha-${getTimestamp()}.png`) });
+                return { ok: false, reason: 'captcha' };
+            }
+        }
+
+        log(`Page settled. Waiting ${CONFIG.navSettleMs}ms.`);
+        await new Promise(r => setTimeout(r, CONFIG.navSettleMs));
+
+        const moreBtn = await page.$('button.M77dve');
+        if (moreBtn) {
+            log('Clicking More reviews');
+            await moreBtn.click();
+            await new Promise(r => setTimeout(r, CONFIG.clickDelayMs));
+        }
+
+        const reviews = await collectReviews(page, log);
+        log(`Extracted ${reviews.length} reviews`);
+
+        const cache = await loadCache();
+        cache[CONFIG.url] = { reviews, cachedAt: new Date().toISOString(), count: reviews.length };
+        await saveCache(cache);
+        await streamReviews(reviews);
+
+        if (!CONFIG.fast) {
+            await page.screenshot({ path: path.join(SCREENSHOTS_DIR, `success-${getTimestamp()}.png`), fullPage: true });
+        }
+        log('Reviews saved');
+        return { ok: true, count: reviews.length };
+    } catch (error) {
+        log(`Error: ${error.message}`);
+        return { ok: false, reason: error.message };
+    } finally {
+        if (browser) await browser.close().catch(() => {});
+    }
+}
+
+async function streamReviews(reviews) {
+    if (!fs.existsSync(CONFIG.outDir)) fs.mkdirSync(CONFIG.outDir, { recursive: true });
+    const filePath = path.join(CONFIG.outDir, 'reviews.json');
+    const ws = fs.createWriteStream(filePath);
+    ws.write('[\n');
+    for (let i = 0; i < reviews.length; i++) {
+        ws.write(JSON.stringify(reviews[i]));
+        if (i < reviews.length - 1) ws.write(',\n');
+    }
+    ws.write('\n]\n');
+    await new Promise(resolve => ws.end(resolve));
+}
+
+async function collectReviews(page, log) {
+    log('Waiting for review stream to load');
+    await page.waitForSelector('.hjmQqc', { timeout: 15000 });
+
+    log(`Auto-scrolling (interval=${CONFIG.scrollIntervalMs}ms)`);
+    await page.evaluate(async (intervalMs, maxStableChecks) => {
+        const findScrollable = (el) => {
+            let p = el.parentElement;
+            while (p) {
+                if (p === document.body) return document.body;
+                const s = getComputedStyle(p);
+                if (s.overflowY === 'auto' || s.overflowY === 'scroll') return p;
+                p = p.parentElement;
             }
             return document.body;
         };
-
-        const getReviewElement = async () => {
-            for (let i = 0; i < 5; i++) {
+        const target = await new Promise((resolve) => {
+            let tries = 0;
+            const t = setInterval(() => {
                 const el = document.querySelector('.hjmQqc');
-                if (el) return el;
-                console.log(`Review element not found, retrying... (${i + 1}/5)`);
-                await new Promise(r => setTimeout(r, 1000));
-            }
-            return null;
-        };
-
-        const reviewElement = await getReviewElement();
-        let scrollableNode;
-
-        if (!reviewElement) {
-            console.log("Could not find a review element after 5 retries. Aborting scroll.");
-            return;
-        }
-
-        scrollableNode = findScrollableParent(reviewElement);
-
-        if (!scrollableNode) {
-            console.log('Could not find a scrollable parent for reviews. Aborting scroll.');
-            return;
-        }
-
-        console.log('Found scrollable element. Starting to scroll.');
-
+                if (el) { clearInterval(t); return resolve(el); }
+                if (++tries >= 5) { clearInterval(t); return resolve(null); }
+            }, 500);
+        });
+        if (!target) return;
+        const scrollable = findScrollable(target);
         await new Promise((resolve) => {
             let lastHeight = -1;
-            let stableChecks = 0;
-            const maxStableChecks = 3; // Number of times to check for stability before stopping
-
+            let stable = 0;
             const timer = setInterval(() => {
-                const isBody = scrollableNode === document.body;
-                const currentHeight = isBody ? document.body.scrollHeight : scrollableNode.scrollHeight;
-
-                if (currentHeight === lastHeight) {
-                    stableChecks++;
-                    console.log(`Height is stable. Check ${stableChecks}/${maxStableChecks}.`);
-                    if (stableChecks >= maxStableChecks) {
-                        console.log('Reached what appears to be the bottom of the page.');
-                        clearInterval(timer);
-                        resolve();
-                    }
-                } else {
-                    stableChecks = 0;
-                    lastHeight = currentHeight;
-                    console.log(`Scrolling... new height: ${currentHeight}`);
-                }
-
-                // Keep scrolling to trigger lazy-loading
-                if (isBody) {
-                    window.scrollBy(0, 800);
-                } else {
-                    scrollableNode.scrollBy(0, 800);
-                }
-            }, 2500 + Math.random() * 1000); // Increased delay
+                const isBody = scrollable === document.body;
+                const h = isBody ? document.body.scrollHeight : scrollable.scrollHeight;
+                if (h === lastHeight) {
+                    if (++stable >= maxStableChecks) { clearInterval(timer); resolve(); }
+                } else { stable = 0; lastHeight = h; }
+                if (isBody) window.scrollBy(0, 800); else scrollable.scrollBy(0, 800);
+            }, intervalMs);
         });
+    }, CONFIG.scrollIntervalMs, CONFIG.maxStableChecks);
+
+    log('Extracting reviews');
+    return page.evaluate(() => {
+        const out = [];
+        document.querySelectorAll('.hjmQqc').forEach((el) => {
+            try {
+                const name = el.querySelector('.IaK8zc.CVo7Bb')?.textContent?.trim();
+                const time = el.querySelector('.bHyEBc')?.textContent?.trim();
+                const aria = el.querySelector('.HeTgld')?.getAttribute('aria-label');
+                const stars = aria ? parseFloat(aria.match(/\d+(\.\d+)?/)?.[0] || '') || 'N/A' : 'N/A';
+                const text = el.querySelector('span.d5K5Pd')?.textContent?.trim() || '';
+                if (name && time) out.push({ name, time, stars, text });
+            } catch {}
+        });
+        return out;
     });
 }
 
+async function raceProxies(proxies) {
+    if (proxies.length === 0) return tryProxy(null);
+    if (proxies.length <= CONFIG.parallelProxies) {
+        const results = await Promise.all(proxies.map(tryProxy));
+        return results.find(r => r.ok) || { ok: false, reason: 'all failed' };
+    }
+    const queue = [...proxies];
+    const inFlight = [];
+    const tryOne = (p) => tryProxy(p).then(r => ({ r, p }));
+    while (queue.length > 0 && inFlight.length < CONFIG.parallelProxies) {
+        inFlight.push(tryOne(queue.shift()));
+    }
+    while (inFlight.length > 0) {
+        const { r, p } = await Promise.race(inFlight);
+        inFlight.splice(inFlight.findIndex(p => p), 1);
+        if (r.ok) return r;
+        if (queue.length > 0) inFlight.push(tryOne(queue.shift()));
+    }
+    return { ok: false, reason: 'all failed' };
+}
+
 (async () => {
-    console.log('🎯 Starting Google Maps Automation with Proxy Rotation...');
+    const t0 = Date.now();
+    console.log(`Starting scrape: ${CONFIG.url}`);
+    console.log(`   parallel-proxies: ${CONFIG.parallelProxies}, fast: ${CONFIG.fast}`);
 
-    if (!fs.existsSync(SCREENSHOTS_DIR)) {
-        fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
-    }
+    if (!CONFIG.fast && !fs.existsSync(SCREENSHOTS_DIR)) fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
 
-    if (!fs.existsSync(PROXIES_FILE)) {
-        console.error(`❌ Proxies file not found at: ${PROXIES_FILE}`);
-        return;
-    }
-
-    const proxies = fs.readFileSync(PROXIES_FILE, 'utf-8').split(/\r?\n/).filter(Boolean);
-    if (proxies.length === 0) {
-        console.error('❌ No proxies found in proxies.txt');
-        return;
-    }
-
-    console.log(`✅ Found ${proxies.length} proxies to try.`);
-
-    let success = false;
-
-    for (let i = 0; i < proxies.length; i++) {
-        const proxy = proxies[i];
-        const proxyDetails = parseProxy(proxy);
-
-        if (!proxyDetails) {
-            console.warn(`⚠️ Skipping invalid proxy format: ${proxy}`);
-            continue;
-        }
-
-        console.log(`\n🔄 Attempt ${i + 1}/${proxies.length} using proxy: ${proxyDetails.server}`);
-        let browser = null;
-
-        try {
-            browser = await puppeteer.launch({
-                headless: false,
-                args: [
-                    `--proxy-server=${proxyDetails.server}`,
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-infobars',
-                    '--window-position=0,0',
-                ],
-            });
-
-            const page = await browser.newPage();
-            
-            // Pipe browser console logs to Node's console
-            page.on('console', msg => console.log(`[Browser] ${msg.text()}`));
-
-            console.log('📱 Emulating Google Pixel 2 XL...');
-            await page.emulate(devices['Pixel 2 XL']);
-
-            if (proxyDetails.username && proxyDetails.password) {
-                console.log('🔒 Authenticating proxy...');
-                await page.authenticate({
-                    username: proxyDetails.username,
-                    password: proxyDetails.password,
-                });
-                console.log('✅ Proxy authenticated.');
-            }
-
-            console.log(`🌐 Navigating to: ${GOOGLE_MAPS_URL}`);
-            await page.goto(GOOGLE_MAPS_URL, { waitUntil: 'networkidle2', timeout: 45000 });
-
-            console.log('⏳ Waiting for 5 seconds for page to settle...');
-            await new Promise(resolve => setTimeout(resolve, 5000));
-            
-            const url = page.url();
-            const isCaptcha = url.includes('sorry') || await page.$('iframe[src*="api2/anchor"]');
-
-            if (isCaptcha) {
-                console.log(`🚨 CAPTCHA detected on URL: ${url}. Trying next proxy.`);
-                const screenshotPath = path.join(SCREENSHOTS_DIR, `captcha-detected-${proxyDetails.server.replace(/:/g, '_')}-${getTimestamp()}.png`);
-                await page.screenshot({ path: screenshotPath });
-                console.log(`📸 Screenshot of CAPTCHA page saved to ${screenshotPath}`);
-                await browser.close();
-                continue; 
-            }
-
-            console.log('✅ Success! No CAPTCHA detected.');
-            console.log(`📍 Final URL reached: ${url}`);
-            
-            console.log('⏳ Waiting 5 seconds before attempting to click...');
-            await new Promise(resolve => setTimeout(resolve, 5000));
-
-            console.log("🖱️ Looking for button with class 'vfi8qf' to click...");
-            const elements = await page.$$('.vfi8qf');
-            
-            if (elements.length > 1) {
-                console.log(`✅ Found ${elements.length} elements. Clicking the second element, which should be the correct button.`);
-                await elements[1].click();
-                console.log('🎉 Button clicked! Waiting 2 seconds for page to settle...');
-                await new Promise(resolve => setTimeout(resolve, 2000));
-            } else {
-                console.log("⚠️ Could not find more than one element with class 'vfi8qf'. Cannot click the target button.");
-            }
-
-            console.log("🖱️ Looking for intermediate button with class 'ecJbe'...");
-            const intermediateButtons = await page.$$('button.ecJbe');
-
-            if (intermediateButtons.length > 0) {
-                console.log(`[DEBUG] Found ${intermediateButtons.length} elements with class 'ecJbe'. Clicking the first one.`);
-                await intermediateButtons[0].click();
-                console.log('🎉 Intermediate button clicked! Waiting 2 seconds...');
-                await new Promise(resolve => setTimeout(resolve, 2000));
-            } else {
-                console.log("⚠️ Could not find any intermediate buttons with class 'ecJbe'.");
-            }
-
-            console.log("🖱️ Looking for 'More reviews' button with class 'M77dve'...");
-            const moreReviewsButton = await page.$('button.M77dve');
-
-            if (moreReviewsButton) {
-                console.log("✅ Found 'More reviews' button. Clicking it.");
-                await moreReviewsButton.click();
-                console.log("🎉 'More reviews' button clicked!");
-                
-                try {
-                    console.log('⏳ Waiting for review stream to load...');
-                    await page.waitForSelector('.hjmQqc', { timeout: 15000 });
-                    console.log('✅ Review stream loaded. Waiting 3 seconds before scrolling...');
-                    await new Promise(resolve => setTimeout(resolve, 3000));
-                    
-                    console.log('🚀 Starting to scroll for reviews...');
-                    await autoScroll(page);
-                    console.log('✅ Finished scrolling.');
-
-                    console.log("🚀 Starting review extraction...");
-                    const reviews = await page.evaluate(() => {
-                        const results = [];
-                        const reviewElements = document.querySelectorAll('.hjmQqc');
-
-                        for (const reviewEl of reviewElements) {
-                            try {
-                                const name = reviewEl.querySelector('.IaK8zc.CVo7Bb')?.textContent.trim();
-                                const time = reviewEl.querySelector('.bHyEBc')?.textContent.trim();
-                                const ratingAriaLabel = reviewEl.querySelector('.HeTgld')?.getAttribute('aria-label');
-                                
-                                const ratingMatch = ratingAriaLabel ? ratingAriaLabel.match(/\d+(\.\d+)?/) : null;
-                                const stars = ratingMatch ? parseFloat(ratingMatch[0]) : 'N/A';
-                                
-                                const text = reviewEl.querySelector('span.d5K5Pd')?.textContent.trim() || '';
-
-                                if (name && time) {
-                                    results.push({ name, time, stars, text });
-                                }
-                            } catch (e) {
-                                console.error('Error parsing a review element:', e);
-                            }
-                        }
-                        return results;
-                    });
-
-                    console.log(`✅ Extracted ${reviews.length} reviews.`);
-
-                    fs.writeFileSync('reviews.json', JSON.stringify(reviews, null, 2));
-                    console.log('💾 Reviews saved to reviews.json');
-
-                    const htmlContent = await page.content();
-                    fs.writeFileSync('reviews.html', htmlContent);
-                    console.log('💾 Full page HTML saved to reviews.html');
-
-                } catch (error) {
-                    console.log(`⚠️ An error occurred during review scraping: ${error.message}`);
-                    const errorScreenshotPath = path.join(SCREENSHOTS_DIR, `review-scraping-error-${getTimestamp()}.png`);
-                    await page.screenshot({ path: errorScreenshotPath });
-                    console.log(`📸 Screenshot of the error state saved to ${errorScreenshotPath}`);
-                }
-
-            } else {
-                console.log("⚠️ Could not find 'More reviews' button.");
-            }
-
-            console.log('✅ All reviews should be loaded now.');
-            const screenshotPath = path.join(SCREENSHOTS_DIR, `google-maps-success-${getTimestamp()}.png`);
-            await page.screenshot({ path: screenshotPath, fullPage: true });
-            console.log(`📸 Screenshot of final page saved to ${screenshotPath}`);
-            
-            success = true;
-            break;
-        } catch (error) {
-            console.error(`❌ An error occurred with proxy ${proxyDetails.server}: ${error.message}`);
-        } finally {
-            if (browser) {
-                await browser.close();
-                console.log('✅ Browser closed.');
-            }
-        }
-    }
-
-    if (success) {
-        console.log('\n✅ Automation finished successfully.');
-        console.log('🚀 Running analysis script...');
-        try {
+    const cache = await loadCache();
+    const cached = cache[CONFIG.url];
+    if (cached && isCacheFresh(cached) && !HAS('no-cache')) {
+        console.log(`Cache hit (${cached.count} reviews, <${CONFIG.cacheTtlHours}h old)`);
+        await streamReviews(cached.reviews);
+        console.log(`Done in ${Date.now() - t0}ms (cache)`);
+        if (HAS('analyze')) {
             const { execSync } = require('child_process');
-            const output = execSync('node topic-analysis.js', { encoding: 'utf-8' });
-            console.log(output);
-            console.log('✅ Analysis complete. Report generated at analysis-report.md');
-        } catch (error) {
-            console.error('❌ Failed to run analysis script:', error.stderr);
+            try {
+                console.log('Running topic analysis...');
+                execSync(`node topic-analysis.js --input "${path.join(CONFIG.outDir, 'reviews.json')}"`, { stdio: 'inherit' });
+            } catch (e) { console.error('Analysis failed:', e.message); }
+        }
+        return;
+    }
+
+    const proxies = CONFIG.skipProxy ? [] : loadProxies();
+    console.log(`Loaded ${proxies.length} proxies`);
+
+    const result = await raceProxies(proxies);
+
+    if (result.ok) {
+        const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+        console.log(`\nDone in ${elapsed}s — ${result.count} reviews -> ${path.join(CONFIG.outDir, 'reviews.json')}`);
+        if (HAS('analyze')) {
+            const { execSync } = require('child_process');
+            try {
+                console.log('Running topic analysis...');
+                execSync(`node topic-analysis.js --input "${path.join(CONFIG.outDir, 'reviews.json')}"`, { stdio: 'inherit' });
+            } catch (e) { console.error('Analysis failed:', e.message); }
         }
     } else {
-        console.log('\n❌ Automation failed after trying all proxies.');
+        console.log(`\nScrape failed: ${result.reason}`);
+        process.exit(1);
     }
 })();

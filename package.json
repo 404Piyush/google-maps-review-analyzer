@@ -1,14 +1,25 @@
 {
   "name": "google-maps-review-analyzer",
-  "version": "1.1.0",
-  "description": "Stealth-scrape Google Maps reviews via Puppeteer + proxy rotation, then generate an executive-grade sentiment report using local Ollama LLMs.",
+  "version": "1.2.0",
+  "description": "Stealth-scrape Google Maps reviews via Puppeteer + proxy rotation OR pull via Places API, then generate an executive-grade sentiment report using local Ollama LLMs or OpenRouter free models.",
   "main": "index.js",
+  "bin": {
+    "gmaps-analyzer": "./bin/cli.js"
+  },
   "scripts": {
     "start": "node index.js",
     "scrape": "node index.js",
-    "analyze:llm": "node topic-analysis.js",
+    "scrape:api": "node places-api.js",
+    "scrape:fast": "node index.js --fast",
+    "analyze": "node topic-analysis.js",
+    "analyze:llm": "node topic-analysis.js --model=balanced",
+    "analyze:fast": "node topic-analysis.js --model=fast",
+    "analyze:openrouter": "node topic-analysis.js --provider=openrouter --model=fast",
     "analyze:basic": "node analyze.js",
+    "demo": "node demo/serve.js",
     "dev": "node --watch index.js",
+    "test": "node --test test/*.test.js",
+    "lint": "for f in index.js topic-analysis.js places-api.js analyze.js bin/cli.js demo/serve.js lib/*.js test/*.js; do [ -f \"$f\" ] && node --check \"$f\"; done",
     "test:captcha": "node test-captcha.js"
   },
   "keywords": [
@@ -21,7 +32,12 @@
     "sentiment-analysis",
     "ollama",
     "llm",
-    "automation"
+    "automation",
+    "openrouter",
+    "places-api",
+    "cli",
+    "scraper",
+    "review-analyzer"
   ],
   "author": {
     "name": "Piyush Utkar",
@@ -42,14 +58,15 @@
   },
   "dependencies": {
     "axios": "^1.10.0",
-    "cheerio": "^1.1.0",
-    "jsdom": "latest",
-    "node-capsolver": "latest",
-    "puppeteer": "^21.6.1",
-    "puppeteer-extra": "^3.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2"
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
   },
   "devDependencies": {
     "@types/node": "^20.10.4"
+  },
+  "optionalDependencies": {
+    "puppeteer": "^21.6.1",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
   }
 }

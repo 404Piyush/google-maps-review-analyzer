@@ -1,0 +1,21 @@
+{
+  "sentiment": { "positive": 78, "negative": 12, "neutral": 15 },
+  "topics": [
+    { "topic": "service", "positive": 32, "negative": 4, "neutral": 2 },
+    { "topic": "food", "positive": 28, "negative": 6, "neutral": 3 },
+    { "topic": "ambience", "positive": 18, "negative": 0, "neutral": 1 },
+    { "topic": "wait time", "positive": 2, "negative": 12, "neutral": 1 },
+    { "topic": "price", "positive": 6, "negative": 7, "neutral": 2 },
+    { "topic": "location", "positive": 9, "negative": 1, "neutral": 0 },
+    { "topic": "menu variety", "positive": 11, "negative": 2, "neutral": 3 },
+    { "topic": "cleanliness", "positive": 8, "negative": 1, "neutral": 0 }
+  ],
+  "reviews": [
+    { "name": "Aarav S.", "time": "2 weeks ago", "stars": 5, "text": "Outstanding service and the food arrived piping hot. The ambience is perfect for a date night." },
+    { "name": "Priya K.", "time": "1 month ago", "stars": 5, "text": "Loved the paneer tikka and the staff remembered my name. Great experience overall." },
+    { "name": "Rajesh V.", "time": "3 weeks ago", "stars": 2, "text": "Waited 45 minutes for a table even with a reservation. Service felt rushed once we sat." },
+    { "name": "Neha M.", "time": "5 days ago", "stars": 4, "text": "Cozy place with friendly servers. Portions could be a bit larger for the price." },
+    { "name": "Vikram P.", "time": "2 months ago", "stars": 5, "text": "Best biryani in the area. Menu variety is impressive and the staff are very attentive." },
+    { "name": "Sneha R.", "time": "1 week ago", "stars": 3, "text": "Decent food, average experience. The place was clean but quite loud." }
+  ]
+}
