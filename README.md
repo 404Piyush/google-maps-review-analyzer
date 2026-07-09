@@ -11,10 +11,23 @@
 ![Node](https://img.shields.io/badge/node-%3E%3D18-339933?style=for-the-badge&logo=node.js&logoColor=white)
 ![Puppeteer](https://img.shields.io/badge/puppeteer--extra-stealth-40B5A4?style=for-the-badge&logo=puppeteer&logoColor=white)
 ![Ollama](https://img.shields.io/badge/ollama-local_AI-000000?style=for-the-badge&logo=ollama&logoColor=white)
+![OpenRouter](https://img.shields.io/badge/openrouter-supported-7C3AED?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-MIT-22c55e?style=for-the-badge)
 ![No telemetry](https://img.shields.io/badge/telemetry-none-9aa5ce?style=for-the-badge)
 
 </div>
+
+<div align="center">
+
+[![Live Demo](https://img.shields.io/badge/🚀_Live_Demo-7aa2f7?style=for-the-badge)](https://github.com/404Piyush/google-maps-review-analyzer/tree/main/demo)
+[![Colab](https://img.shields.io/badge/▶_Open_in_Colab-F9AB00?style=for-the-badge&logo=googlecolab&logoColor=white)](https://github.com/404Piyush/google-maps-review-analyzer/blob/main/notebooks/colab.ipynb)
+[![Lightning AI](https://img.shields.io/badge/⚡_Lightning_AI-792EE5?style=for-the-badge)](https://github.com/404Piyush/google-maps-review-analyzer/blob/main/notebooks/lightning-ai.md)
+
+</div>
+
+> **⚡ What's new in v1.2.0:** ~4–6× faster end-to-end, **OpenRouter provider** (no local GPU needed), **Google Places API** path (no proxies), static **live demo page**, Colab + Lightning AI notebooks, full GitHub polish (CI, issue templates, Dependabot).
+
+---
 
 ---
 
@@ -112,22 +125,44 @@ http://user:pass@mobile.proxy-c.com:3128
 ### Run the full pipeline
 
 ```bash
-node index.js
+# Option A: stealth scraper (needs proxies.txt)
+node index.js --parallel-proxies=2
+
+# Option B: Google Places API (needs GOOGLE_PLACES_API_KEY in .env)
+node places-api.js --text-search="Joe's Pizza Manhattan" --analyze
+
+# Single combined command (v1.2.0+)
+node index.js --analyze            # scrapes then runs analysis
 ```
 
-The scraper picks a proxy, navigates to the hard-coded `GOOGLE_MAPS_URL` in `index.js`, scrolls to load all reviews, writes `reviews.json`, then automatically invokes `topic-analysis.js`.
+`index.js` accepts env vars or flags. Common ones:
 
-To run a different place, edit the constant at the top of `index.js`:
+| Flag / env | Default | What it does |
+|---|---|---|
+| `--parallel-proxies=N` / `PARALLEL_PROXIES` | 2 | Proxies to try in parallel |
+| `--fast` | off | Skip screenshots + minimal waits |
+| `--no-cache` | off | Force re-scrape even if cached |
+| `--headed` | off | Show browser (debug) |
+| `--analyze` | off | Auto-run topic-analysis after scraping |
+| `--no-proxy` | off | Run Puppeteer without proxy |
 
-```js
-const GOOGLE_MAPS_URL = 'https://maps.app.goo.gl/<your-place-id>';
-```
+The scraper picks the fastest proxy, navigates to `GOOGLE_MAPS_URL`, scrolls to load all reviews, writes `output/reviews.json`, then invokes `topic-analysis.js`.
+
+To run a different place, edit `.env` or set `GOOGLE_MAPS_URL=...` — no code change needed.
 
 ### Run just the analysis (you already have `reviews.json`)
 
 ```bash
-node topic-analysis.js    # two-pass Ollama report
-node analyze.js           # offline keyword sentiment only
+# Local Ollama (default)
+node topic-analysis.js --model=fast           # gemma2:2b only, ~75s for 200 reviews
+node topic-analysis.js --model=balanced       # gemma2:2b → qwen3:8b
+node topic-analysis.js --model=deep           # qwen3:8b for both phases
+
+# OpenRouter free hosted models (no GPU needed)
+OPENROUTER_API_KEY=sk-or-... node topic-analysis.js --provider=openrouter --model=fast
+
+# Offline keyword-only fallback
+node analyze.js
 ```
 
 ---
