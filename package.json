@@ -1,6 +1,6 @@
 {
   "name": "google-maps-review-analyzer",
-  "version": "1.2.0",
+  "version": "1.2.2",
   "description": "Stealth-scrape Google Maps reviews via Puppeteer + proxy rotation OR pull via Places API, then generate an executive-grade sentiment report using local Ollama LLMs or OpenRouter free models.",
   "main": "index.js",
   "bin": {

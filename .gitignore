@@ -9,3 +9,4 @@ proxies.txt
 reviews.txt
 *.log
 .DS_Store
+.vercel

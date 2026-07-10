@@ -1,0 +1,12 @@
+node_modules
+.git
+.env
+.env.*
+!.env.example
+output
+proxies.txt
+reviews.txt
+url-cache.json
+*.log
+.DS_Store
+.vercel
