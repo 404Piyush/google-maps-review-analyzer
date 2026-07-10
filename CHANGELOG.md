@@ -12,6 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `package.json` keywords, author, repository, and `engines` metadata
 - `npm run analyze:llm` and `npm run analyze:basic` script aliases
 
+## [1.2.1] — 2026-06-10
+
+### Added
+- **Interactive demo frontend** with 3 tabs (showcase, paste-JSON, live via OpenRouter)
+  - `demo/interactive.js`: client-side sentiment + topic extraction (no network)
+  - `demo/live.js`: OpenRouter streaming client (real LLM analysis in the browser)
+  - Tab system + forms + styling in `demo/index.html` / `demo/styles.css`
+
 ## [1.2.0] — 2026-06-10
 
 ### Added
