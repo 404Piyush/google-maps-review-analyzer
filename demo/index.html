@@ -18,7 +18,7 @@
         </p>
         <div class="hero-actions">
             <a href="https://github.com/404Piyush/google-maps-review-analyzer" class="btn btn-primary">★ GitHub</a>
-            <a href="#showcase" class="btn btn-ghost">See it in action ↓</a>
+            <a href="#try-it" class="btn btn-ghost">Try it now ↓</a>
         </div>
         <div class="hero-pills">
             <span class="pill">⚡ Batched LLM inference</span>
@@ -32,34 +32,105 @@
 
 <main class="container">
 
-<section id="showcase" class="showcase">
-    <h2>📊 Pre-computed showcase</h2>
-    <p class="muted">A real run against a sample restaurant — 187 reviews pulled via Places API, analyzed with <code>gemma2:2b</code>.</p>
+<section id="try-it" class="try-it">
+    <div class="tabs" role="tablist">
+        <button class="tab active" data-tab="showcase" role="tab">📊 Showcase</button>
+        <button class="tab" data-tab="paste" role="tab">📋 Paste JSON</button>
+        <button class="tab" data-tab="live" role="tab">🤖 Live via OpenRouter</button>
+    </div>
 
-    <div class="grid-2">
-        <div class="card">
-            <h3>Sentiment breakdown</h3>
-            <canvas id="sentimentChart" height="220"></canvas>
+    <!-- TAB 1: SHOWCASE (pre-baked) -->
+    <div class="tab-panel active" data-panel="showcase">
+        <p class="muted">A real run against a sample restaurant — 187 reviews pulled via Places API, analyzed with <code>gemma2:2b</code>.</p>
+        <div class="grid-2">
+            <div class="card">
+                <h3>Sentiment breakdown</h3>
+                <canvas id="sentimentChart" height="220"></canvas>
+            </div>
+            <div class="card">
+                <h3>Top topics by mention</h3>
+                <canvas id="topicsChart" height="220"></canvas>
+            </div>
         </div>
+        <div class="card report">
+            <h3>Executive report (markdown)</h3>
+            <div id="report" class="markdown"></div>
+        </div>
+        <details class="card">
+            <summary><b>📄 Input data — preview</b></summary>
+            <pre id="reviewsPreview" class="reviews"></pre>
+        </details>
+    </div>
+
+    <!-- TAB 2: PASTE JSON (client-side) -->
+    <div class="tab-panel" data-panel="paste">
+        <p class="muted">Paste your own <code>reviews.json</code> (the format produced by <code>index.js</code> or <code>places-api.js</code>). Analysis runs entirely in your browser — no network calls, no API keys.</p>
         <div class="card">
-            <h3>Top topics by mention</h3>
-            <canvas id="topicsChart" height="220"></canvas>
+            <label for="jsonInput" class="form-label">Reviews JSON (array of <code>{name, time, stars, text}</code>)</label>
+            <textarea id="jsonInput" rows="10" placeholder='[{"name":"Alice","time":"1 day ago","stars":5,"text":"Amazing food and great service!"}, ...]'></textarea>
+            <div class="form-actions">
+                <button id="analyzeBtn" class="btn btn-primary">Analyze locally</button>
+                <button id="loadSampleBtn" class="btn btn-ghost">Load sample data</button>
+                <span id="pasteStatus" class="muted"></span>
+            </div>
+        </div>
+        <div id="pasteResults" class="hidden">
+            <div class="grid-2">
+                <div class="card">
+                    <h3>Sentiment breakdown</h3>
+                    <canvas id="pasteSentimentChart" height="220"></canvas>
+                </div>
+                <div class="card">
+                    <h3>Top topics by mention</h3>
+                    <canvas id="pasteTopicsChart" height="220"></canvas>
+                </div>
+            </div>
+            <div class="card report">
+                <h3>Aggregated stats (client-side, instant)</h3>
+                <div id="pasteStats" class="markdown"></div>
+            </div>
         </div>
     </div>
 
-    <div class="card report">
-        <h3>Executive report (markdown)</h3>
-        <div id="report" class="markdown"></div>
+    <!-- TAB 3: LIVE VIA OPENROUTER -->
+    <div class="tab-panel" data-panel="live">
+        <p class="muted">Real LLM analysis streamed to your browser. You'll need a free OpenRouter key (<a href="https://openrouter.ai/" target="_blank" rel="noopener">get one</a>). Stays in your browser — only the OpenRouter API is contacted.</p>
+        <div class="card">
+            <div class="form-row">
+                <div class="form-field">
+                    <label for="openrouterKey" class="form-label">OpenRouter API key</label>
+                    <input id="openrouterKey" type="password" placeholder="sk-or-v1-..." autocomplete="off"/>
+                    <small class="muted">Stored only in this browser tab. Not logged, not sent anywhere except openrouter.ai.</small>
+                </div>
+                <div class="form-field">
+                    <label for="modelSelect" class="form-label">Model</label>
+                    <select id="modelSelect">
+                        <option value="meta-llama/llama-3.1-8b-instruct:free" selected>Llama 3.1 8B (free)</option>
+                        <option value="meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B (free)</option>
+                        <option value="google/gemini-2.0-flash-exp:free">Gemini 2.0 Flash (free)</option>
+                        <option value="qwen/qwen-2.5-72b-instruct:free">Qwen 2.5 72B (free)</option>
+                        <option value="openai/gpt-oss-20b:free">GPT-OSS 20B (free)</option>
+                    </select>
+                </div>
+            </div>
+            <label for="liveJsonInput" class="form-label">Reviews JSON</label>
+            <textarea id="liveJsonInput" rows="8" placeholder='[{"name":"Alice","stars":5,"text":"..."}, ...]'></textarea>
+            <div class="form-actions">
+                <button id="liveLoadSampleBtn" class="btn btn-ghost">Load sample data</button>
+                <button id="streamBtn" class="btn btn-primary">▶ Stream analysis</button>
+                <button id="stopBtn" class="btn btn-ghost hidden">■ Stop</button>
+                <span id="liveStatus" class="muted"></span>
+            </div>
+        </div>
+        <div id="liveResults" class="card hidden">
+            <h3>📝 LLM analysis (streamed)</h3>
+            <div id="liveReport" class="markdown"></div>
+        </div>
     </div>
-
-    <details class="card">
-        <summary><b>📄 Input data — preview</b></summary>
-        <pre id="reviewsPreview" class="reviews"></pre>
-    </details>
 </section>
 
-<section id="pipelines" class="pipelines">
-    <h2>🛠️ Three ways to run it</h2>
+<section class="pipelines">
+    <h2>🛠️ Three ways to run it (locally)</h2>
     <div class="grid-3">
         <div class="card mode">
             <div class="mode-badge">①</div>
@@ -82,7 +153,7 @@
     </div>
 </section>
 
-<section id="benchmarks" class="benchmarks">
+<section class="benchmarks">
     <h2>⚡ Benchmarks (v1.2.0)</h2>
     <p class="muted">200 reviews, on commodity hardware. GPU = free Colab T4. CPU = M1 MacBook.</p>
     <table class="benchmarks-table">
@@ -98,7 +169,7 @@
     </table>
 </section>
 
-<section id="try-it" class="cta">
+<section class="cta">
     <h2>🚀 Try it yourself</h2>
     <div class="cta-row">
         <a class="btn btn-primary" href="https://github.com/404Piyush/google-maps-review-analyzer/blob/main/notebooks/colab.ipynb" target="_blank" rel="noopener">▶ Open in Colab (free T4 GPU)</a>
@@ -116,5 +187,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
 <script src="app.js"></script>
+<script src="interactive.js"></script>
+<script src="live.js"></script>
 </body>
 </html>
