@@ -1,64 +1,28 @@
 /**
- * Live mode: stream a real LLM analysis from OpenRouter directly from the browser.
- * Uses OpenAI-compatible Chat Completions with SSE streaming.
- * API key is held only in this tab; only openrouter.ai is contacted.
+ * Live mode: stream a real LLM analysis from /api/analyze (server-side proxy).
+ * The OpenRouter API key is stored on the server, never sent to the browser.
  */
-
-const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 let activeController = null;
 
-function buildPrompt(reviews) {
-    const summary = reviews.map((r, i) => {
-        const stars = r.stars ? ` (${r.stars}★)` : '';
-        const text = String(r.text || '').replace(/\n/g, ' ').slice(0, 400);
-        return `${i + 1}.${stars} "${text}"`;
-    }).join('\n');
-
-    return `You are a data analyst. Here are ${reviews.length} customer reviews:
-
-${summary}
-
-Write a concise executive report. Use these markdown headings:
-
-# Customer Feedback Analysis
-## 1. Executive Summary
-(one paragraph)
-## 2. Sentiment Breakdown
-(percentages from the data)
-## 3. Top Themes — What's Working
-(3 themes with supporting quote)
-## 4. Top Themes — Areas for Improvement
-(3 themes with supporting quote)
-## 5. Actionable Recommendations
-(3-4 bullets)
-
-Output ONLY the markdown report, no preamble.`;
-}
-
-async function streamFromOpenRouter({ apiKey, model, prompt, onChunk, onDone, onError }) {
+async function streamFromBackend({ reviews, model, onChunk, onDone, onError }) {
     if (activeController) activeController.abort();
     activeController = new AbortController();
 
     try {
-        const res = await fetch(OPENROUTER_URL, {
+        const res = await fetch('/api/analyze', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`,
-                'HTTP-Referer': window.location.origin,
-                'X-Title': 'Google Maps Review Analyzer Demo',
-            },
-            body: JSON.stringify({
-                model,
-                stream: true,
-                messages: [{ role: 'user', content: prompt }],
-            }),
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reviews, model }),
             signal: activeController.signal,
         });
 
         if (!res.ok) {
-            const errText = await res.text().catch(() => '');
-            onError(`OpenRouter ${res.status}: ${errText.slice(0, 200) || res.statusText}`);
+            let detail = res.statusText;
+            try {
+                const body = await res.json();
+                detail = body.error || body.detail || JSON.stringify(body);
+            } catch {}
+            onError(`Server ${res.status}: ${detail}`);
             return;
         }
 
@@ -115,18 +79,9 @@ function setLiveStatus(msg, isError = false) {
 }
 
 async function startStream() {
-    const key = document.getElementById('openrouterKey').value.trim();
     const model = document.getElementById('modelSelect').value;
     const raw = document.getElementById('liveJsonInput').value.trim();
 
-    if (!key) {
-        setLiveStatus('OpenRouter API key required.', true);
-        return;
-    }
-    if (!key.startsWith('sk-or-')) {
-        setLiveStatus('That doesn\'t look like an OpenRouter key (should start with sk-or-).', true);
-        return;
-    }
     let reviews;
     try {
         reviews = JSON.parse(raw);
@@ -139,27 +94,23 @@ async function startStream() {
         return;
     }
 
-    const capped = reviews.slice(0, 50);
-    if (reviews.length > capped.length) {
-        setLiveStatus(`Capping to ${capped.length} reviews to stay within free-tier rate limits.`);
+    if (reviews.length > 50) {
+        setLiveStatus(`Capping to 50 reviews to stay within free-tier rate limits.`);
     } else {
         setLiveStatus('');
     }
-
-    const prompt = buildPrompt(capped);
 
     document.getElementById('streamBtn').classList.add('hidden');
     document.getElementById('stopBtn').classList.remove('hidden');
     document.getElementById('liveResults').classList.remove('hidden');
     document.getElementById('liveReport').innerHTML = '';
     document.getElementById('liveReport').dataset.raw = '';
-    setLiveStatus('Streaming from OpenRouter…');
+    setLiveStatus('Streaming from server (Nemotron 3 Ultra 550B)...');
 
     let buffer = '';
-    await streamFromOpenRouter({
-        apiKey: key,
+    await streamFromBackend({
+        reviews,
         model,
-        prompt,
         onChunk: (chunk) => {
             buffer += chunk;
             document.getElementById('liveReport').dataset.raw = buffer;
