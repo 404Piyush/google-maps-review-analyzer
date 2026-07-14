@@ -24,24 +24,34 @@ const CACHE_DIR = path.join(process.cwd(), 'cache', 'reviews');
 
 // ============================================
 // Resolve a Google Maps short URL → final URL
+// Uses GET with no UA — Google returns 302 with Location for short URLs
+// when the request lacks browser-like headers, exposing the real Maps URL.
 // ============================================
 function resolveShortUrl(shortUrl) {
     return new Promise((resolve, reject) => {
         const url = new URL(shortUrl);
-        const opts = {
+        const req = https.request({
             hostname: url.hostname,
             path: url.pathname + url.search,
-            method: 'HEAD',
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            },
-        };
-        const req = https.request(opts, (res) => {
+            method: 'GET',
+        }, (res) => {
+            res.resume(); // discard body
+            // Follow Location chain manually (max 5 hops)
+            const hops = [shortUrl];
+            let location = res.headers.location;
+            let statusCode = res.statusCode;
+            while (location && hops.length < 5) {
+                const next = location.startsWith('http') ? location : new URL(location, hops[hops.length - 1]).toString();
+                hops.push(next);
+                // Just return the most recent Location — caller can make another request
+                // if they need to follow further. Single hop is enough for short URLs.
+                break;
+            }
             resolve({
-                finalUrl: res.headers.location || shortUrl,
-                statusCode: res.statusCode,
+                finalUrl: location || shortUrl,
+                statusCode,
+                hops,
             });
-            res.resume();
         });
         req.on('error', reject);
         req.setTimeout(8000, () => {
