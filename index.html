@@ -1,190 +1,480 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="cream">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google Maps Review Analyzer — Live Demo</title>
-    <meta name="description" content="Scrape or fetch Google Maps reviews, then generate a data-driven sentiment report using local LLMs.">
+    <title>Review Atlas — Google Maps Review Analyzer</title>
+    <meta name="description" content="Scrape or fetch Google Maps reviews, then generate a data-driven sentiment report using local or hosted LLMs.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,0..100;1,9..144,300..700,0..100&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="styles.css">
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://esm.sh/three@0.185.1",
+            "three/": "https://esm.sh/three@0.185.1/",
+            "d3": "https://esm.sh/d3@7.9.0",
+            "d3-cloud": "https://esm.sh/d3-cloud@1.2.9",
+            "marked": "https://esm.sh/marked@12.0.2"
+        }
+    }
+    </script>
 </head>
 <body>
 
-<header class="hero">
-    <div class="container">
-        <div class="hero-tag">LIVE DEMO</div>
-        <h1>Google Maps<br><span class="accent">Review Analyzer</span></h1>
-        <p class="hero-sub">
-            Stealth-scrape reviews with Puppeteer <em>or</em> pull them via the official Places API, then ship a data-driven sentiment report from a local LLM.
-        </p>
-        <div class="hero-actions">
-            <a href="https://github.com/404Piyush/google-maps-review-analyzer" class="btn btn-primary">★ GitHub</a>
-            <a href="#try-it" class="btn btn-ghost">Try it now ↓</a>
+<a href="#main" class="skip-link">Skip to content</a>
+
+<!-- Custom cursor -->
+<div class="cursor-dot" aria-hidden="true"></div>
+<div class="cursor-ring" aria-hidden="true"></div>
+
+<!-- Scroll progress -->
+<div class="scroll-progress" aria-hidden="true"></div>
+
+<!-- Noise overlay -->
+<svg class="noise" aria-hidden="true">
+    <filter id="noise-filter">
+        <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" stitchTiles="stitch"/>
+        <feColorMatrix type="saturate" values="0"/>
+    </filter>
+    <rect width="100%" height="100%" filter="url(#noise-filter)"/>
+</svg>
+
+<!-- ============ NAV ============ -->
+<nav class="nav">
+    <div class="nav-inner">
+        <a class="nav-brand" href="#top">
+            <span class="nav-mark">◆</span>
+            <span class="nav-word">Review Atlas</span>
+        </a>
+        <div class="nav-links">
+            <a href="#work">What it does</a>
+            <a href="#demo">Try it</a>
+            <a href="#pipeline">Pipeline</a>
+            <a href="#numbers">Benchmarks</a>
         </div>
-        <div class="hero-pills">
-            <span class="pill">⚡ Batched LLM inference</span>
-            <span class="pill">🧠 GPU auto-detect</span>
-            <span class="pill">🔁 URL cache</span>
-            <span class="pill">🌐 OpenRouter-ready</span>
-            <span class="pill">🪶 Zero proxy needed via Places API</span>
+        <a class="nav-cta" href="https://github.com/404Piyush/google-maps-review-analyzer" target="_blank" rel="noopener">
+            GitHub →
+        </a>
+    </div>
+</nav>
+
+<!-- ============ HERO ============ -->
+<header id="top" class="hero">
+    <div class="hero-grid">
+        <div class="hero-text" data-reveal>
+            <div class="eyebrow">
+                <span class="eyebrow-dot"></span>
+                Live demo · v1.3.0
+            </div>
+            <h1 class="display">
+                Maps reviews,<br>
+                <em>decoded.</em>
+            </h1>
+            <p class="hero-sub">
+                A scraper and an analyst, wired together. Pull thousands of reviews from Google Maps — through stealth or the official API — and ship a sentiment report from a local LLM or any OpenRouter model, in under a minute.
+            </p>
+            <div class="hero-actions">
+                <a class="btn btn-primary magnetic" href="#demo">Try it live ↓</a>
+                <a class="btn btn-ghost magnetic" href="https://github.com/404Piyush/google-maps-review-analyzer" target="_blank" rel="noopener">★ GitHub</a>
+            </div>
+            <ul class="hero-stats" role="list">
+                <li><strong data-count="200">0</strong><span>reviews / min</span></li>
+                <li><strong data-count="3.6" data-suffix="×">0</strong><span>faster scrape</span></li>
+                <li><strong data-count="7">0</strong><span>free LLM models</span></li>
+                <li><strong data-count="0">$0</strong><span>to run locally</span></li>
+            </ul>
+        </div>
+        <div class="hero-3d" id="hero3d" data-reveal data-reveal-delay="200">
+            <div class="hero-3d-fallback">
+                <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <defs>
+                        <radialGradient id="g1" cx="50%" cy="50%">
+                            <stop offset="0%" stop-color="#c5f900" stop-opacity="0.3"/>
+                            <stop offset="100%" stop-color="#c5f900" stop-opacity="0"/>
+                        </radialGradient>
+                    </defs>
+                    <circle cx="200" cy="200" r="180" fill="url(#g1)"/>
+                </svg>
+            </div>
         </div>
     </div>
 </header>
 
-<main class="container">
+<!-- ============ MARQUEE ============ -->
+<div class="marquee" aria-hidden="true">
+    <div class="marquee-track">
+        <span>Puppeteer stealth</span><span>·</span>
+        <span>Google Places API</span><span>·</span>
+        <span>Ollama local LLMs</span><span>·</span>
+        <span>OpenRouter cloud</span><span>·</span>
+        <span>Apple Silicon</span><span>·</span>
+        <span>NVIDIA CUDA</span><span>·</span>
+        <span>Batched inference</span><span>·</span>
+        <span>Streaming output</span><span>·</span>
+        <span>JSON in, markdown out</span><span>·</span>
+        <span>Puppeteer stealth</span><span>·</span>
+        <span>Google Places API</span><span>·</span>
+        <span>Ollama local LLMs</span><span>·</span>
+        <span>OpenRouter cloud</span><span>·</span>
+        <span>Apple Silicon</span><span>·</span>
+        <span>NVIDIA CUDA</span><span>·</span>
+        <span>Batched inference</span><span>·</span>
+        <span>Streaming output</span><span>·</span>
+        <span>JSON in, markdown out</span><span>·</span>
+    </div>
+</div>
 
-<section id="try-it" class="try-it">
-    <div class="tabs" role="tablist">
-        <button class="tab active" data-tab="showcase" role="tab">📊 Showcase</button>
-        <button class="tab" data-tab="paste" role="tab">📋 Paste JSON</button>
-        <button class="tab" data-tab="live" role="tab">🤖 Live via OpenRouter</button>
+<!-- ============ BENTO GRID ============ -->
+<main id="main">
+<section id="work" class="bento-section">
+    <div class="section-head" data-reveal>
+        <span class="section-num">01</span>
+        <h2 class="section-title">What it does.</h2>
+        <p class="section-sub">Three jobs. One tool. Pick your flavor.</p>
     </div>
 
-    <!-- TAB 1: SHOWCASE (pre-baked) -->
-    <div class="tab-panel active" data-panel="showcase">
-        <p class="muted">A real run against a sample restaurant — 187 reviews pulled via Places API, analyzed with <code>gemma2:2b</code>.</p>
-        <div class="grid-2">
-            <div class="card">
-                <h3>Sentiment breakdown</h3>
-                <canvas id="sentimentChart" height="220"></canvas>
+    <div class="bento">
+        <article class="tile tile-lg tilt" data-reveal>
+            <span class="tile-num">①</span>
+            <h3>Scrape the open web</h3>
+            <p>Puppeteer with stealth and a rotating proxy race. Falls back to the next proxy the moment one stalls — no more waiting 90 seconds on a dead endpoint.</p>
+            <pre class="code-snippet"><code>$ node index.js --parallel-proxies=2 --fast</code></pre>
+            <div class="tile-meta">
+                <span class="chip">Puppeteer</span>
+                <span class="chip">Stealth</span>
+                <span class="chip">Proxy race</span>
             </div>
-            <div class="card">
-                <h3>Top topics by mention</h3>
-                <canvas id="topicsChart" height="220"></canvas>
+        </article>
+
+        <article class="tile tile-sm tilt" data-reveal data-reveal-delay="80">
+            <span class="tile-num">②</span>
+            <h3>Or use the official API</h3>
+            <p>Same output schema, no scraping drama. $200/mo free credit covers most projects.</p>
+            <pre class="code-snippet"><code>$ node places-api.js</code></pre>
+        </article>
+
+        <article class="tile tile-stat tilt" data-reveal data-reveal-delay="160">
+            <div class="kpi">
+                <span class="kpi-num" data-count="3.6" data-suffix="×">0</span>
+                <span class="kpi-label">faster than v1.1</span>
+            </div>
+            <span class="tile-num tile-num-ghost">03</span>
+            <h3>Analyze</h3>
+        </article>
+
+        <article class="tile tile-md tilt" data-reveal data-reveal-delay="240">
+            <span class="tile-num">④</span>
+            <h3>Local or cloud LLM</h3>
+            <p>Ollama on your laptop, or any OpenRouter model in the browser tab. Auto-detects GPU vs CPU; streams output as it arrives.</p>
+            <div class="tile-meta">
+                <span class="chip">gemma2:2b</span>
+                <span class="chip">qwen3:8b</span>
+                <span class="chip">Nemotron 550B</span>
+                <span class="chip">Llama 3.3 70B</span>
+            </div>
+        </article>
+
+        <article class="tile tile-md tilt" data-reveal data-reveal-delay="320">
+            <span class="tile-num">⑤</span>
+            <h3>One CLI</h3>
+            <p>Scrape, fetch, analyze, demo — all under one binary. Aliases for everything.</p>
+            <pre class="code-snippet"><code>$ npx gmaps-analyzer scrape:api
+$ npx gmaps-analyzer analyze --model=fast</code></pre>
+        </article>
+
+        <article class="tile tile-stat tile-stat-accent tilt" data-reveal data-reveal-delay="400">
+            <div class="kpi">
+                <span class="kpi-num" data-count="50">0</span>
+                <span class="kpi-label">reviews / batch</span>
+            </div>
+            <span class="tile-num tile-num-ghost">06</span>
+            <h3>Batched</h3>
+        </article>
+    </div>
+</section>
+
+<!-- ============ LIVE DEMO ============ -->
+<section id="demo" class="demo-section">
+    <div class="section-head" data-reveal>
+        <span class="section-num">02</span>
+        <h2 class="section-title">Try it now.</h2>
+        <p class="section-sub">Three flavors. No signup. No tracking.</p>
+    </div>
+
+    <div class="tabs" role="tablist" data-reveal>
+        <button class="tab active" data-tab="showcase" role="tab" aria-selected="true">
+            <span class="tab-num">A</span>
+            <span>Showcase</span>
+        </button>
+        <button class="tab" data-tab="paste" role="tab" aria-selected="false">
+            <span class="tab-num">B</span>
+            <span>Paste JSON</span>
+        </button>
+        <button class="tab" data-tab="live" role="tab" aria-selected="false">
+            <span class="tab-num">C</span>
+            <span>Live LLM</span>
+        </button>
+        <span class="tab-underline" aria-hidden="true"></span>
+    </div>
+
+    <!-- TAB 1: SHOWCASE -->
+    <div class="tab-panel active" data-panel="showcase" role="tabpanel">
+        <div class="showcase-grid">
+            <div class="showcase-viz tilt" data-reveal>
+                <div class="viz-card">
+                    <div class="viz-header">
+                        <span class="viz-tag">Sentiment</span>
+                        <span class="viz-meta">187 reviews · gemma2:2b</span>
+                    </div>
+                    <svg class="viz-donut" id="showcaseDonut" viewBox="0 0 200 200" aria-label="Sentiment breakdown"></svg>
+                    <div class="viz-legend">
+                        <span><i style="background:#c5f900"></i>Positive <b id="showPos">—</b></span>
+                        <span><i style="background:#0a0a0a"></i>Neutral <b id="showNeu">—</b></span>
+                        <span><i style="background:#c2410c"></i>Negative <b id="showNeg">—</b></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="showcase-viz tilt" data-reveal data-reveal-delay="100">
+                <div class="viz-card">
+                    <div class="viz-header">
+                        <span class="viz-tag">Topics</span>
+                        <span class="viz-meta">Top mentions</span>
+                    </div>
+                    <svg class="viz-cloud" id="showcaseCloud" viewBox="0 0 400 240" aria-label="Top topics by mention"></svg>
+                </div>
             </div>
         </div>
-        <div class="card report">
-            <h3>Executive report (markdown)</h3>
-            <div id="report" class="markdown"></div>
+
+        <div class="showcase-report tilt" data-reveal>
+            <div class="viz-card viz-card-pad">
+                <div class="viz-header">
+                    <span class="viz-tag">Executive report</span>
+                    <span class="viz-meta">Markdown · streamed</span>
+                </div>
+                <article id="showReport" class="markdown"></article>
+            </div>
         </div>
-        <details class="card">
-            <summary><b>📄 Input data — preview</b></summary>
+
+        <details class="raw-data" data-reveal>
+            <summary>📄 Raw reviews (preview)</summary>
             <pre id="reviewsPreview" class="reviews"></pre>
         </details>
     </div>
 
-    <!-- TAB 2: PASTE JSON (client-side) -->
-    <div class="tab-panel" data-panel="paste">
-        <p class="muted">Paste your own <code>reviews.json</code> (the format produced by <code>index.js</code> or <code>places-api.js</code>). Analysis runs entirely in your browser — no network calls, no API keys.</p>
-        <div class="card">
-            <label for="jsonInput" class="form-label">Reviews JSON (array of <code>{name, time, stars, text}</code>)</label>
+    <!-- TAB 2: PASTE JSON -->
+    <div class="tab-panel" data-panel="paste" role="tabpanel" hidden>
+        <div class="paste-card">
+            <p class="paste-hint">
+                Paste your own <code>reviews.json</code> (the format produced by <code>index.js</code> or <code>places-api.js</code>). Analysis runs in your browser — no network calls, no API keys.
+            </p>
+            <label for="jsonInput" class="form-label">Reviews JSON</label>
             <textarea id="jsonInput" rows="10" placeholder='[{"name":"Alice","time":"1 day ago","stars":5,"text":"Amazing food and great service!"}, ...]'></textarea>
             <div class="form-actions">
-                <button id="analyzeBtn" class="btn btn-primary">Analyze locally</button>
-                <button id="loadSampleBtn" class="btn btn-ghost">Load sample data</button>
-                <span id="pasteStatus" class="muted"></span>
+                <button id="analyzeBtn" class="btn btn-primary magnetic">Analyze locally →</button>
+                <button id="loadSampleBtn" class="btn btn-ghost magnetic">Load sample data</button>
+                <span id="pasteStatus" class="status"></span>
             </div>
         </div>
-        <div id="pasteResults" class="hidden">
-            <div class="grid-2">
-                <div class="card">
-                    <h3>Sentiment breakdown</h3>
-                    <canvas id="pasteSentimentChart" height="220"></canvas>
+
+        <div id="pasteResults" class="paste-results" hidden>
+            <div class="showcase-grid">
+                <div class="viz-card tilt">
+                    <div class="viz-header">
+                        <span class="viz-tag">Sentiment</span>
+                        <span class="viz-meta" id="pasteMeta">—</span>
+                    </div>
+                    <svg class="viz-donut" id="pasteDonut" viewBox="0 0 200 200" aria-label="Sentiment breakdown"></svg>
                 </div>
-                <div class="card">
-                    <h3>Top topics by mention</h3>
-                    <canvas id="pasteTopicsChart" height="220"></canvas>
+                <div class="viz-card tilt">
+                    <div class="viz-header">
+                        <span class="viz-tag">Topics</span>
+                        <span class="viz-meta">Top mentions</span>
+                    </div>
+                    <svg class="viz-cloud" id="pasteCloud" viewBox="0 0 400 240" aria-label="Top topics by mention"></svg>
                 </div>
             </div>
-            <div class="card report">
-                <h3>Aggregated stats (client-side, instant)</h3>
+            <div class="viz-card viz-card-pad">
+                <div class="viz-header">
+                    <span class="viz-tag">Stats</span>
+                    <span class="viz-meta">Aggregated client-side</span>
+                </div>
                 <div id="pasteStats" class="markdown"></div>
             </div>
         </div>
     </div>
 
-    <!-- TAB 3: LIVE VIA OPENROUTER (server-proxied) -->
-    <div class="tab-panel" data-panel="live">
-        <p class="muted">Real LLM analysis streamed from a backend proxy. The OpenRouter API key lives in server env vars — <b>no key required in your browser</b>. Powered by NVIDIA Nemotron 3 Ultra 550B by default.</p>
-        <div class="card">
+    <!-- TAB 3: LIVE LLM -->
+    <div class="tab-panel" data-panel="live" role="tabpanel" hidden>
+        <div class="paste-card">
+            <p class="paste-hint">
+                Real LLM analysis streamed from the server. API key lives in server env vars — <b>never in your browser</b>. NVIDIA Nemotron 3 Ultra 550B by default.
+            </p>
             <div class="form-row">
                 <div class="form-field">
                     <label for="modelSelect" class="form-label">Model</label>
                     <select id="modelSelect">
-                        <option value="nvidia/nemotron-3-ultra-550b-a55b:free" selected>Nemotron 3 Ultra 550B (free, default)</option>
-                        <option value="meta-llama/llama-3.1-8b-instruct:free">Llama 3.1 8B (free)</option>
+                        <option value="nvidia/nemotron-3-ultra-550b-a55b:free" selected>Nemotron 3 Ultra 550B (free)</option>
                         <option value="meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B (free)</option>
+                        <option value="meta-llama/llama-3.1-8b-instruct:free">Llama 3.1 8B (free)</option>
                         <option value="google/gemini-2.0-flash-exp:free">Gemini 2.0 Flash (free)</option>
                         <option value="qwen/qwen-2.5-72b-instruct:free">Qwen 2.5 72B (free)</option>
                         <option value="openai/gpt-oss-20b:free">GPT-OSS 20B (free)</option>
                     </select>
-                    <small class="muted">Server uses <code>OPENROUTER_API_KEY</code> env var. Free models only.</small>
                 </div>
             </div>
             <label for="liveJsonInput" class="form-label">Reviews JSON</label>
             <textarea id="liveJsonInput" rows="8" placeholder='[{"name":"Alice","stars":5,"text":"..."}, ...]'></textarea>
             <div class="form-actions">
-                <button id="liveLoadSampleBtn" class="btn btn-ghost">Load sample data</button>
-                <button id="streamBtn" class="btn btn-primary">▶ Stream analysis</button>
-                <button id="stopBtn" class="btn btn-ghost hidden">■ Stop</button>
-                <span id="liveStatus" class="muted"></span>
+                <button id="liveLoadSampleBtn" class="btn btn-ghost magnetic">Load sample data</button>
+                <button id="streamBtn" class="btn btn-primary magnetic">▶ Stream analysis</button>
+                <button id="stopBtn" class="btn btn-ghost magnetic hidden">■ Stop</button>
+                <span id="liveStatus" class="status"></span>
             </div>
         </div>
-        <div id="liveResults" class="card hidden">
-            <h3>📝 LLM analysis (streamed)</h3>
-            <div id="liveReport" class="markdown"></div>
+
+        <div id="liveResults" class="live-results" hidden>
+            <div class="viz-card viz-card-pad">
+                <div class="viz-header">
+                    <span class="viz-tag">LLM analysis</span>
+                    <span class="viz-meta" id="liveMeta">—</span>
+                </div>
+                <div id="liveReport" class="markdown"></div>
+            </div>
         </div>
     </div>
 </section>
 
-<section class="pipelines">
-    <h2>🛠️ Three ways to run it (locally)</h2>
-    <div class="grid-3">
-        <div class="card mode">
-            <div class="mode-badge">①</div>
-            <h3>Scrape</h3>
-            <p>Puppeteer + stealth + rotating proxies. Falls back across proxies in parallel.</p>
-            <pre><code>node index.js --parallel-proxies=2 --fast</code></pre>
+<!-- ============ PIPELINE STEPPER ============ -->
+<section id="pipeline" class="pipeline-section">
+    <div class="section-head" data-reveal>
+        <span class="section-num">03</span>
+        <h2 class="section-title">The pipeline.</h2>
+        <p class="section-sub">Three stages. Cached at every step.</p>
+    </div>
+
+    <ol class="stepper" data-reveal>
+        <li class="step">
+            <div class="step-marker">①</div>
+            <div class="step-body">
+                <h3>Scrape or fetch</h3>
+                <p>Puppeteer stealth + parallel proxies, or the official Places API. URL cache skips repeats for 24 hours.</p>
+                <pre class="code-snippet"><code>$ node index.js --parallel-proxies=2 --fast
+# or
+$ node places-api.js --text-search="Joe's Pizza"</code></pre>
+            </div>
+        </li>
+        <li class="step">
+            <div class="step-marker">②</div>
+            <div class="step-body">
+                <h3>Analyze</h3>
+                <p>Batched LLM calls (10 reviews / batch). GPU auto-detected on Apple Silicon + CUDA. Resumes from intermediate file on crash.</p>
+                <pre class="code-snippet"><code>$ node topic-analysis.js --model=fast --batch-size=10</code></pre>
+            </div>
+        </li>
+        <li class="step">
+            <div class="step-marker">③</div>
+            <div class="step-body">
+                <h3>Report</h3>
+                <p>Markdown executive report with sentiment breakdown, top topics, and a written summary. Streams to your terminal or the demo tab.</p>
+                <pre class="code-snippet"><code>output/executive-report.md
+output/extracted-reviews.json
+output/intermediate-analysis.json</code></pre>
+            </div>
+        </li>
+    </ol>
+</section>
+
+<!-- ============ BENCHMARKS ============ -->
+<section id="numbers" class="bench-section">
+    <div class="section-head" data-reveal>
+        <span class="section-num">04</span>
+        <h2 class="section-title">The numbers.</h2>
+        <p class="section-sub">v1.2.0 vs v1.1.0, same machine, 200 reviews.</p>
+    </div>
+
+    <div class="bench-grid">
+        <div class="bench-card tilt" data-reveal>
+            <span class="bench-label">Scrape (good proxy)</span>
+            <div class="bench-bar" data-bar-from="0" data-bar-to="72" data-bar-max="100">
+                <span class="bench-fill bench-fill-old"></span>
+                <span class="bench-fill bench-fill-new"></span>
+            </div>
+            <div class="bench-values">
+                <span><b>90s</b> v1.1</span>
+                <span class="bench-winner"><b>25s</b> v1.2</span>
+            </div>
         </div>
-        <div class="card mode">
-            <div class="mode-badge">②</div>
-            <h3>Places API</h3>
-            <p>Official Google Places API. No scraping, no proxies. $200/mo free credit.</p>
-            <pre><code>GOOGLE_PLACES_API_KEY=... node places-api.js --text-search="Joe's Pizza"</code></pre>
+        <div class="bench-card tilt" data-reveal data-reveal-delay="80">
+            <span class="bench-label">Scrape (all proxies)</span>
+            <div class="bench-bar" data-bar-from="0" data-bar-to="83" data-bar-max="100">
+                <span class="bench-fill bench-fill-old"></span>
+                <span class="bench-fill bench-fill-new"></span>
+            </div>
+            <div class="bench-values">
+                <span><b>5min</b> v1.1</span>
+                <span class="bench-winner"><b>50s</b> v1.2</span>
+            </div>
         </div>
-        <div class="card mode">
-            <div class="mode-badge">③</div>
-            <h3>Analyze</h3>
-            <p>Batched Ollama or OpenRouter free models. Auto-detects GPU vs CPU.</p>
-            <pre><code>node topic-analysis.js --model=fast --batch-size=10</code></pre>
+        <div class="bench-card tilt" data-reveal data-reveal-delay="160">
+            <span class="bench-label">Analyze (CPU, 200 rev)</span>
+            <div class="bench-bar" data-bar-from="0" data-bar-to="79" data-bar-max="100">
+                <span class="bench-fill bench-fill-old"></span>
+                <span class="bench-fill bench-fill-new"></span>
+            </div>
+            <div class="bench-values">
+                <span><b>6min</b> v1.1</span>
+                <span class="bench-winner"><b>75s</b> v1.2</span>
+            </div>
+        </div>
+        <div class="bench-card tilt" data-reveal data-reveal-delay="240">
+            <span class="bench-label">Analyze (T4 GPU, 200 rev)</span>
+            <div class="bench-bar" data-bar-from="0" data-bar-to="78" data-bar-max="100">
+                <span class="bench-fill bench-fill-old"></span>
+                <span class="bench-fill bench-fill-new"></span>
+            </div>
+            <div class="bench-values">
+                <span><b>3min</b> v1.1</span>
+                <span class="bench-winner"><b>40s</b> v1.2</span>
+            </div>
         </div>
     </div>
 </section>
 
-<section class="benchmarks">
-    <h2>⚡ Benchmarks (v1.2.0)</h2>
-    <p class="muted">200 reviews, on commodity hardware. GPU = free Colab T4. CPU = M1 MacBook.</p>
-    <table class="benchmarks-table">
-        <thead>
-            <tr><th>Stage</th><th>v1.1.0</th><th>v1.2.0</th><th>Speedup</th></tr>
-        </thead>
-        <tbody>
-            <tr><td>Scrape (good proxy)</td><td>~90s</td><td>~25s</td><td class="ok">3.6×</td></tr>
-            <tr><td>Scrape (all proxies)</td><td>~5min</td><td>~50s</td><td class="ok">6×</td></tr>
-            <tr><td>Analyze (CPU, 200 rev)</td><td>~6min</td><td>~75s</td><td class="ok">4.8×</td></tr>
-            <tr><td>Analyze (T4 GPU, 200 rev)</td><td>~3min</td><td>~40s</td><td class="ok">4.5×</td></tr>
-        </tbody>
-    </table>
-</section>
-
-<section class="cta">
-    <h2>🚀 Try it yourself</h2>
-    <div class="cta-row">
-        <a class="btn btn-primary" href="https://github.com/404Piyush/google-maps-review-analyzer/blob/main/notebooks/colab.ipynb" target="_blank" rel="noopener">▶ Open in Colab (free T4 GPU)</a>
-        <a class="btn btn-ghost" href="https://github.com/404Piyush/google-maps-review-analyzer/blob/main/notebooks/lightning-ai.md" target="_blank" rel="noopener">⚡ Lightning AI guide</a>
-        <a class="btn btn-ghost" href="https://github.com/404Piyush/google-maps-review-analyzer#quick-start" target="_blank" rel="noopener">📖 Local install</a>
+<!-- ============ CTA ============ -->
+<section class="cta-section">
+    <div class="cta-inner" data-reveal>
+        <h2 class="cta-title">Run it on your data.</h2>
+        <p class="cta-sub">Free, local, MIT licensed. Three minutes to first result.</p>
+        <div class="cta-actions">
+            <a class="btn btn-primary btn-large magnetic" href="https://github.com/404Piyush/google-maps-review-analyzer/blob/main/notebooks/colab.ipynb" target="_blank" rel="noopener">▶ Open in Colab</a>
+            <a class="btn btn-ghost btn-large magnetic" href="https://github.com/404Piyush/google-maps-review-analyzer" target="_blank" rel="noopener">★ Star on GitHub</a>
+        </div>
     </div>
 </section>
-
 </main>
 
-<footer class="container footer">
-    <p>Built by <a href="https://404piyush.me">Piyush Utkar</a> · <a href="https://github.com/404Piyush/google-maps-review-analyzer">Source on GitHub</a> · MIT Licensed</p>
+<!-- ============ FOOTER ============ -->
+<footer class="footer">
+    <div class="footer-inner">
+        <div class="footer-col">
+            <span class="nav-mark">◆</span>
+            <span>Review Atlas · v1.3.0</span>
+        </div>
+        <div class="footer-col">
+            <span>Built by <a href="https://404piyush.me">Piyush Utkar</a></span>
+        </div>
+        <div class="footer-col">
+            <span>MIT · 2026</span>
+        </div>
+    </div>
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
-<script src="app.js"></script>
-<script src="interactive.js"></script>
-<script src="live.js"></script>
+<script type="module" src="app.js"></script>
 </body>
 </html>

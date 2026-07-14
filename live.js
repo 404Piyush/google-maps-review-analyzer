@@ -1,143 +1,155 @@
-/**
- * Live mode: stream a real LLM analysis from /api/analyze (server-side proxy).
- * The OpenRouter API key is stored on the server, never sent to the browser.
- */
-let activeController = null;
+// ============================================
+// live.js — Streamed LLM analysis via /api/analyze
+// ============================================
+import { marked } from 'marked';
 
-async function streamFromBackend({ reviews, model, onChunk, onDone, onError }) {
-    if (activeController) activeController.abort();
-    activeController = new AbortController();
+const SAMPLE_LIVE = [
+    { name: 'Maya', stars: 5, text: 'The ramen here is incredible — rich broth, perfectly cooked noodles, and the chashu melts in your mouth. Service was warm and quick. Will be back next week.' },
+    { name: 'Liam', stars: 4, text: 'Great spot for a quick lunch. The gyoza was crispy and flavorful, but the portion size was a little small for the price.' },
+    { name: 'Aisha', stars: 5, text: 'Hands down the best ramen in the city. Cozy vibe, friendly staff, and the spicy miso broth is unreal. Highly recommend.' },
+    { name: 'Noah', stars: 2, text: 'Waited 35 minutes despite a reservation. Food was lukewarm when it arrived. Disappointing for the price point.' },
+    { name: 'Sofia', stars: 5, text: 'Hidden gem! Fresh noodles, generous toppings, and reasonable prices. The staff was attentive and welcoming.' },
+    { name: 'Ethan', stars: 1, text: 'Overpriced and underwhelming. The broth tasted canned and the noodles were soggy. Would not return.' },
+    { name: 'Zoe', stars: 4, text: 'Solid ramen place with good flavor. A bit cramped inside but the food makes up for it.' },
+    { name: 'Kai', stars: 5, text: 'Phenomenal. The tonkotsu broth is rich and creamy, noodles have perfect bite. Service is top-notch.' },
+    { name: 'Priya', stars: 3, text: 'It was okay. Nothing wrong, but nothing memorable. Probably won\'t rush back.' },
+    { name: 'Marcus', stars: 5, text: 'Best ramen experience I\'ve had outside of Japan. The kakuni is divine. Worth every penny.' },
+];
+
+const modelSelect = document.getElementById('modelSelect');
+const liveJsonInput = document.getElementById('liveJsonInput');
+const streamBtn = document.getElementById('streamBtn');
+const stopBtn = document.getElementById('stopBtn');
+const liveLoadSampleBtn = document.getElementById('liveLoadSampleBtn');
+const liveResults = document.getElementById('liveResults');
+const liveReport = document.getElementById('liveReport');
+const liveMeta = document.getElementById('liveMeta');
+const liveStatus = document.getElementById('liveStatus');
+
+let currentController = null;
+
+function setLiveStatus(msg, type = '') {
+    if (!liveStatus) return;
+    liveStatus.textContent = msg;
+    liveStatus.className = `status${type ? ' is-' + type : ''}`;
+}
+
+function skeletonHTML() {
+    return `
+        <div class="skeleton" style="height:24px;width:60%;margin:12px 0;"></div>
+        <div class="skeleton" style="height:14px;width:90%;margin:8px 0;"></div>
+        <div class="skeleton" style="height:14px;width:85%;margin:8px 0;"></div>
+        <div class="skeleton" style="height:14px;width:70%;margin:8px 0;"></div>
+        <div class="skeleton" style="height:24px;width:50%;margin:20px 0 8px;"></div>
+        <div class="skeleton" style="height:14px;width:80%;margin:8px 0;"></div>
+        <div class="skeleton" style="height:14px;width:60%;margin:8px 0;"></div>
+    `;
+}
+
+function renderMarkdown(text) {
+    return marked.parse(text, { breaks: true, gfm: true });
+}
+
+async function streamAnalysis() {
+    let raw;
+    try {
+        raw = JSON.parse(liveJsonInput.value.trim());
+    } catch (err) {
+        setLiveStatus('invalid JSON: ' + err.message, 'error');
+        return;
+    }
+    if (!Array.isArray(raw) || raw.length === 0) {
+        setLiveStatus('provide a non-empty reviews array', 'error');
+        return;
+    }
+
+    const reviews = raw.slice(0, 50); // server caps at 50
+    const model = modelSelect.value;
+    const startTime = performance.now();
+
+    // Reset UI
+    liveResults.hidden = false;
+    liveReport.innerHTML = skeletonHTML();
+    liveMeta.textContent = `streaming from ${model.split('/').pop()}`;
+    streamBtn.hidden = true;
+    stopBtn.hidden = false;
+    setLiveStatus('connecting…');
+
+    currentController = new AbortController();
 
     try {
-        const res = await fetch('/api/analyze', {
+        const response = await fetch('/api/analyze', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ reviews, model }),
-            signal: activeController.signal,
+            signal: currentController.signal,
         });
 
-        if (!res.ok) {
-            let detail = res.statusText;
-            try {
-                const body = await res.json();
-                detail = body.error || body.detail || JSON.stringify(body);
-            } catch {}
-            onError(`Server ${res.status}: ${detail}`);
-            return;
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`server error ${response.status}: ${errText.slice(0, 100)}`);
         }
 
-        const reader = res.body.getReader();
+        setLiveStatus('streaming…');
+        liveReport.innerHTML = '';
+
+        const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
+        let fullText = '';
 
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-            buffer += decoder.decode(value, { stream: true });
 
+            buffer += decoder.decode(value, { stream: true });
             const lines = buffer.split('\n');
             buffer = lines.pop() || '';
 
             for (const line of lines) {
-                const trimmed = line.trim();
-                if (!trimmed.startsWith('data:')) continue;
-                const data = trimmed.slice(5).trim();
-                if (data === '[DONE]') {
-                    onDone();
-                    return;
-                }
+                if (!line.startsWith('data: ')) continue;
+                const data = line.slice(6).trim();
+                if (data === '[DONE]') break;
+                if (!data) continue;
                 try {
-                    const parsed = JSON.parse(data);
-                    const chunk = parsed.choices?.[0]?.delta?.content;
-                    if (chunk) onChunk(chunk);
+                    const json = JSON.parse(data);
+                    const chunk = json.choices?.[0]?.delta?.content || json.choices?.[0]?.message?.content || '';
+                    if (chunk) {
+                        fullText += chunk;
+                        liveReport.innerHTML = renderMarkdown(fullText);
+                    }
                 } catch {
-                    // ignore malformed lines
+                    // Non-JSON line, treat as raw token
+                    fullText += data;
+                    liveReport.innerHTML = renderMarkdown(fullText);
                 }
             }
         }
-        onDone();
-    } catch (e) {
-        if (e.name === 'AbortError') return;
-        onError(e.message);
+
+        const elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
+        liveMeta.textContent = `completed in ${elapsed}s · ${reviews.length} reviews`;
+        setLiveStatus(`done · ${elapsed}s`, 'success');
+    } catch (err) {
+        if (err.name === 'AbortError') {
+            setLiveStatus('stopped', 'error');
+            liveMeta.textContent = 'stopped by user';
+        } else {
+            setLiveStatus('failed: ' + err.message, 'error');
+            liveReport.innerHTML = `<p style="color:var(--rust);">⚠ ${err.message}</p>`;
+        }
+    } finally {
+        streamBtn.hidden = false;
+        stopBtn.hidden = true;
+        currentController = null;
     }
 }
 
-async function loadLiveSample() {
-    try {
-        const sample = await fetch('./sample-reviews.json').then(r => r.json());
-        const reviews = (sample.reviews || sample).slice(0, 12);
-        document.getElementById('liveJsonInput').value = JSON.stringify(reviews, null, 2);
-    } catch (e) {
-        document.getElementById('liveStatus').textContent = `Could not load sample: ${e.message}`;
-    }
-}
+if (streamBtn) streamBtn.addEventListener('click', streamAnalysis);
+if (stopBtn) stopBtn.addEventListener('click', () => currentController?.abort());
 
-function setLiveStatus(msg, isError = false) {
-    const el = document.getElementById('liveStatus');
-    el.textContent = msg;
-    el.style.color = isError ? 'var(--red)' : '';
-}
-
-async function startStream() {
-    const model = document.getElementById('modelSelect').value;
-    const raw = document.getElementById('liveJsonInput').value.trim();
-
-    let reviews;
-    try {
-        reviews = JSON.parse(raw);
-    } catch (e) {
-        setLiveStatus(`Invalid JSON: ${e.message}`, true);
-        return;
-    }
-    if (!Array.isArray(reviews) || reviews.length === 0) {
-        setLiveStatus('Expected a non-empty array.', true);
-        return;
-    }
-
-    if (reviews.length > 50) {
-        setLiveStatus(`Capping to 50 reviews to stay within free-tier rate limits.`);
-    } else {
-        setLiveStatus('');
-    }
-
-    document.getElementById('streamBtn').classList.add('hidden');
-    document.getElementById('stopBtn').classList.remove('hidden');
-    document.getElementById('liveResults').classList.remove('hidden');
-    document.getElementById('liveReport').innerHTML = '';
-    document.getElementById('liveReport').dataset.raw = '';
-    setLiveStatus('Streaming from server (Nemotron 3 Ultra 550B)...');
-
-    let buffer = '';
-    await streamFromBackend({
-        reviews,
-        model,
-        onChunk: (chunk) => {
-            buffer += chunk;
-            document.getElementById('liveReport').dataset.raw = buffer;
-            document.getElementById('liveReport').innerHTML = marked.parse(buffer);
-        },
-        onDone: () => {
-            setLiveStatus(`Done — ${model} (${buffer.length} chars)`);
-            document.getElementById('streamBtn').classList.remove('hidden');
-            document.getElementById('stopBtn').classList.add('hidden');
-        },
-        onError: (err) => {
-            setLiveStatus(`Error: ${err}`, true);
-            document.getElementById('streamBtn').classList.remove('hidden');
-            document.getElementById('stopBtn').classList.add('hidden');
-        },
+if (liveLoadSampleBtn) {
+    liveLoadSampleBtn.addEventListener('click', () => {
+        liveJsonInput.value = JSON.stringify(SAMPLE_LIVE, null, 2);
+        setLiveStatus(`loaded ${SAMPLE_LIVE.length} sample reviews`, 'success');
     });
 }
-
-function stopStream() {
-    if (activeController) activeController.abort();
-    setLiveStatus('Stopped.');
-    document.getElementById('streamBtn').classList.remove('hidden');
-    document.getElementById('stopBtn').classList.add('hidden');
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('streamBtn').addEventListener('click', startStream);
-    document.getElementById('stopBtn').addEventListener('click', stopStream);
-    document.getElementById('liveLoadSampleBtn').addEventListener('click', loadLiveSample);
-});
