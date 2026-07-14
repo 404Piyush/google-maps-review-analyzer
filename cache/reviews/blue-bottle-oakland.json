@@ -1,0 +1,300 @@
+{
+  "place_id": "blue-bottle-oakland",
+  "name": "Blue Bottle Coffee",
+  "search_query": "Blue Bottle Coffee Oakland",
+  "maps_url": "https://maps.app.goo.gl/YOUR_BLUE_BOTTLE_OAKLAND_URL",
+  "rating": 4.5,
+  "reviews_count_estimate": 3210,
+  "reviews": [
+    {
+      "author": "Marcus B.",
+      "stars": 3,
+      "time": "1 day ago",
+      "text": "Better than Starbucks. Worse than the small place next door."
+    },
+    {
+      "author": "Brandon K.",
+      "stars": 3,
+      "time": "2 months ago",
+      "text": "Went once. Fine. Will go back when I am feeling fancy."
+    },
+    {
+      "author": "Iris Z.",
+      "stars": 4,
+      "time": "10 months ago",
+      "text": "Filter coffee is the move. Order the single origin and ask what they are pouring today."
+    },
+    {
+      "author": "Yuki S.",
+      "stars": 5,
+      "time": "1 week ago",
+      "text": "Filter coffee is the move. Order the single origin and ask what they are pouring today."
+    },
+    {
+      "author": "Sam J.",
+      "stars": 5,
+      "time": "2 years ago",
+      "text": "7 dollars for a coffee is hard to swallow but the baristas explain the roast notes like they are giving a TED talk."
+    },
+    {
+      "author": "Marcus B.",
+      "stars": 5,
+      "time": "3 months ago",
+      "text": "I taste none of those things but I believe them."
+    },
+    {
+      "author": "Chloe A.",
+      "stars": 2,
+      "time": "2 days ago",
+      "text": "I am a remote worker and you just banned my main reason to come here."
+    },
+    {
+      "author": "Carla M.",
+      "stars": 5,
+      "time": "5 days ago",
+      "text": "I taste none of those things but I believe them."
+    },
+    {
+      "author": "Will T.",
+      "stars": 3,
+      "time": "10 months ago",
+      "text": "Went once. Fine. Will go back when I am feeling fancy."
+    },
+    {
+      "author": "Carla M.",
+      "stars": 2,
+      "time": "2 weeks ago",
+      "text": "Hipster central. If you like that, fine. If you do not, stay away."
+    },
+    {
+      "author": "Rachel W.",
+      "stars": 2,
+      "time": "2 weeks ago",
+      "text": "I am a remote worker and you just banned my main reason to come here."
+    },
+    {
+      "author": "Naomi F.",
+      "stars": 3,
+      "time": "1 month ago",
+      "text": "Better than Starbucks. Worse than the small place next door."
+    },
+    {
+      "author": "Devon W.",
+      "stars": 5,
+      "time": "5 days ago",
+      "text": "Hayes Valley location is a chapel to coffee."
+    },
+    {
+      "author": "Helena D.",
+      "stars": 2,
+      "time": "14 months ago",
+      "text": "Waited 25 minutes for a pour-over. Coffee was excellent. Still."
+    },
+    {
+      "author": "Anya R.",
+      "stars": 5,
+      "time": "1 year ago",
+      "text": "I taste none of those things but I believe them."
+    },
+    {
+      "author": "Chloe A.",
+      "stars": 5,
+      "time": "1 month ago",
+      "text": "Worth it for the ritual alone."
+    },
+    {
+      "author": "Linh T.",
+      "stars": 5,
+      "time": "8 months ago",
+      "text": "I taste none of those things but I believe them."
+    },
+    {
+      "author": "Yuki S.",
+      "stars": 5,
+      "time": "2 months ago",
+      "text": "I taste none of those things but I believe them."
+    },
+    {
+      "author": "Vikram N.",
+      "stars": 4,
+      "time": "2 years ago",
+      "text": "I taste none of those things but I believe them."
+    },
+    {
+      "author": "Derek L.",
+      "stars": 1,
+      "time": "2 months ago",
+      "text": "Hipster central. If you like that, fine. If you do not, stay away."
+    },
+    {
+      "author": "Henrik O.",
+      "stars": 4,
+      "time": "2 days ago",
+      "text": "Slightly pretentious, completely justified."
+    },
+    {
+      "author": "Sam J.",
+      "stars": 4,
+      "time": "5 months ago",
+      "text": "Hayes Valley location is a chapel to coffee."
+    },
+    {
+      "author": "Caleb D.",
+      "stars": 4,
+      "time": "5 days ago",
+      "text": "Hayes Valley location is a chapel to coffee."
+    },
+    {
+      "author": "Linh T.",
+      "stars": 2,
+      "time": "2 months ago",
+      "text": "Tiny portions, big prices, mysterious music. Felt like a museum."
+    },
+    {
+      "author": "Rachel W.",
+      "stars": 4,
+      "time": "18 months ago",
+      "text": "Espresso is the best in the Bay, full stop."
+    },
+    {
+      "author": "Tara M.",
+      "stars": 3,
+      "time": "3 weeks ago",
+      "text": "Better than Starbucks. Worse than the small place next door."
+    },
+    {
+      "author": "Tara M.",
+      "stars": 5,
+      "time": "5 months ago",
+      "text": "Pastries are excellent. The almond croissant is the right amount of buttery."
+    },
+    {
+      "author": "Helena D.",
+      "stars": 5,
+      "time": "5 days ago",
+      "text": "No laptop policy is a gift. Read a book. Talk to someone. Drink slowly."
+    },
+    {
+      "author": "Caleb D.",
+      "stars": 2,
+      "time": "3 months ago",
+      "text": "Pastries are stale by 11am."
+    },
+    {
+      "author": "Devon W.",
+      "stars": 5,
+      "time": "3 months ago",
+      "text": "Filter coffee is the move. Order the single origin and ask what they are pouring today."
+    },
+    {
+      "author": "Naomi F.",
+      "stars": 5,
+      "time": "8 months ago",
+      "text": "The vibe is real. Concrete, brass, soft light. You do not want to be in a rush here."
+    },
+    {
+      "author": "Josh K.",
+      "stars": 4,
+      "time": "3 months ago",
+      "text": "Hayes Valley location is a chapel to coffee."
+    },
+    {
+      "author": "Rachel W.",
+      "stars": 5,
+      "time": "3 months ago",
+      "text": "They take coffee seriously. Single origin Ethiopian with notes of jasmine and bergamot."
+    },
+    {
+      "author": "Chloe A.",
+      "stars": 5,
+      "time": "5 months ago",
+      "text": "Beans are roasted on site. You can smell it from outside."
+    },
+    {
+      "author": "Tara M.",
+      "stars": 5,
+      "time": "3 weeks ago",
+      "text": "Filter coffee is the move. Order the single origin and ask what they are pouring today."
+    },
+    {
+      "author": "Will T.",
+      "stars": 5,
+      "time": "2 weeks ago",
+      "text": "The vibe is real. Concrete, brass, soft light. You do not want to be in a rush here."
+    },
+    {
+      "author": "Caleb D.",
+      "stars": 5,
+      "time": "5 months ago",
+      "text": "Slightly pretentious, completely justified."
+    },
+    {
+      "author": "Ravi P.",
+      "stars": 3,
+      "time": "1 month ago",
+      "text": "Better than Starbucks. Worse than the small place next door."
+    },
+    {
+      "author": "Linh T.",
+      "stars": 5,
+      "time": "1 week ago",
+      "text": "Best coffee in Oakland and I have tried all of them. The New Orleans iced is ridiculous."
+    },
+    {
+      "author": "Mia H.",
+      "stars": 5,
+      "time": "3 days ago",
+      "text": "Beans are roasted on site. You can smell it from outside."
+    },
+    {
+      "author": "Brandon K.",
+      "stars": 5,
+      "time": "3 weeks ago",
+      "text": "No laptop policy is a gift. Read a book. Talk to someone. Drink slowly."
+    },
+    {
+      "author": "Mia H.",
+      "stars": 4,
+      "time": "8 months ago",
+      "text": "Worth it for the ritual alone."
+    },
+    {
+      "author": "Devon W.",
+      "stars": 5,
+      "time": "1 day ago",
+      "text": "Espresso is the best in the Bay, full stop."
+    },
+    {
+      "author": "Ravi P.",
+      "stars": 3,
+      "time": "5 days ago",
+      "text": "I come for the pastry, stay for the wifi (jk, no wifi)."
+    },
+    {
+      "author": "Chloe A.",
+      "stars": 5,
+      "time": "18 months ago",
+      "text": "Beans are roasted on site. You can smell it from outside."
+    },
+    {
+      "author": "Carla M.",
+      "stars": 5,
+      "time": "5 days ago",
+      "text": "Beans are roasted on site. You can smell it from outside."
+    },
+    {
+      "author": "Theo B.",
+      "stars": 5,
+      "time": "18 months ago",
+      "text": "Filter coffee is the move. Order the single origin and ask what they are pouring today."
+    },
+    {
+      "author": "Ravi P.",
+      "stars": 4,
+      "time": "1 year ago",
+      "text": "Pastries are excellent. The almond croissant is the right amount of buttery."
+    }
+  ],
+  "scraped_at": "2026-07-14T00:00:00Z",
+  "source": "scraper-demo-cache"
+}

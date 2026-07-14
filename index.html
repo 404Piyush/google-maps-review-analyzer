@@ -88,6 +88,15 @@
                 <li><strong data-count="7">0</strong><span>free LLM models</span></li>
                 <li><strong data-count="0">$0</strong><span>to run locally</span></li>
             </ul>
+
+            <form id="urlPasteForm" class="url-paste" data-reveal data-reveal-delay="120">
+                <label for="mapsUrl" class="url-paste-label">Or paste any Maps URL</label>
+                <div class="url-paste-row">
+                    <input id="mapsUrl" type="url" placeholder="https://maps.app.goo.gl/kHViyJeH1rjHzY2VA" autocomplete="off" spellcheck="false"/>
+                    <button type="submit" class="btn btn-primary magnetic">Scrape</button>
+                </div>
+                <p class="url-paste-hint" id="urlPasteHint">Try a click on a pin first. For other URLs, run the local scraper: <code>node index.js --url=…</code></p>
+            </form>
         </div>
         <div class="hero-3d" id="hero3d" data-reveal data-reveal-delay="200">
             <div class="hero-3d-fallback">
@@ -474,6 +483,76 @@ output/intermediate-analysis.json</code></pre>
         </div>
     </div>
 </footer>
+
+<!-- ============ GLOBE TOOLTIP ============ -->
+<div id="globeTooltip" class="globe-tooltip" aria-hidden="true">
+    <span class="tt-name"></span>
+    <span class="tt-loc"></span>
+    <span class="tt-cat"></span>
+</div>
+
+<!-- ============ STORY PANEL ============ -->
+<aside id="storyPanel" class="story-panel" aria-hidden="true">
+    <button class="story-close magnetic" aria-label="Close panel" type="button">×</button>
+
+    <div class="story-loading" hidden>
+        <div class="story-spinner"></div>
+        <p>Scraping reviews…</p>
+    </div>
+
+    <div class="story-error" hidden>
+        <h3 class="story-error-title">Couldn't load reviews</h3>
+        <p class="story-error-message"></p>
+        <pre class="story-error-hint"></pre>
+    </div>
+
+    <div class="story-content">
+        <div class="story-header">
+            <span class="story-emoji" aria-hidden="true"></span>
+            <div class="story-titles">
+                <h2 class="story-name"></h2>
+                <p class="story-location"></p>
+            </div>
+            <span class="story-rating"></span>
+        </div>
+        <p class="story-tagline"></p>
+
+        <div class="story-summary">
+            <div class="story-summary-stat">
+                <span class="story-summary-num" id="storyReviewCount">0</span>
+                <span class="story-summary-label">reviews</span>
+            </div>
+            <div class="story-summary-bar">
+                <div class="story-summary-pos" id="storyBarPos"></div>
+                <div class="story-summary-neu" id="storyBarNeu"></div>
+                <div class="story-summary-neg" id="storyBarNeg"></div>
+            </div>
+            <div class="story-summary-legend">
+                <span><i></i>Pos</span>
+                <span><i></i>Neu</span>
+                <span><i></i>Neg</span>
+            </div>
+        </div>
+
+        <div class="story-section">
+            <div class="story-section-head">
+                <span class="story-label">All reviews</span>
+                <span class="story-provenance" id="storyProvenance"></span>
+            </div>
+            <div class="story-reviews" id="storyReviews"></div>
+        </div>
+
+        <div class="story-section story-ai">
+            <div class="story-section-head">
+                <span class="story-label story-label-ai">AI summary</span>
+                <button type="button" class="story-analyze-btn magnetic" id="storyAnalyzeBtn">Regenerate</button>
+            </div>
+            <div class="story-narrative" id="storyNarrative">
+                <p class="story-narrative-empty">Click regenerate to get an AI-written summary of these reviews.</p>
+            </div>
+        </div>
+    </div>
+</aside>
 
 <script type="module" src="app.js"></script>
 </body>
