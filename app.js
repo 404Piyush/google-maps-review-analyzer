@@ -2,7 +2,7 @@
 // app.js — Main entry: tabs, reveal init, 3D tilt, theme
 // ============================================
 import './cursor.js';
-import './hero-3d.js';
+import './globe.js';
 import './interactive.js';
 import './live.js';
 import { initReveal, initCounters, initBenchBars } from './reveal.js';
