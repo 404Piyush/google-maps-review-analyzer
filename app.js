@@ -10,6 +10,12 @@ import { renderDonut, renderWordCloud } from './viz.js';
 import { marked } from 'marked';
 
 // ============================================
+// 0. Mark JS as alive — enables [data-reveal] hide state
+// (if this never runs, content stays visible by default)
+// ============================================
+document.documentElement.classList.add('js-reveal');
+
+// ============================================
 // 1. Reveal observers
 // ============================================
 initReveal();

@@ -130,7 +130,7 @@ export async function renderWordCloud(containerEl, words) {
         .size([width, height])
         .words(words.map((w) => ({ ...w, text: w.text })))
         .padding(4)
-        .rotate((d) => (Math.random() < 0.7 ? 0 : (Math.random() < 0.5 ? -30 : 30))))
+        .rotate(() => Math.random() < 0.7 ? 0 : (Math.random() < 0.5 ? -30 : 30))
         .font('Inter')
         .fontSize((d) => sizeScale(d.value))
         .spiral('archimedean')
