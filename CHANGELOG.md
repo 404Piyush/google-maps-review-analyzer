@@ -7,10 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] — 2026-07-14
+
+### Changed
+- **Editorial design overhaul** of the demo page
+  - Theme: cream (#f5f1e8) + ink (#0a0a0a) + acid green (#c5f900) — replaced Tokyo Night purple/blue
+  - Display font: Fraunces (variable serif, opsz + SOFT axes) replacing generic sans
+  - Body: Inter, Mono: JetBrains Mono (all loaded via Google Fonts with preconnect)
+- **Chart.js replaced with D3.js** for full custom data viz control
+  - Animated arc donut chart (cubic ease, sequential delays)
+  - Word cloud layout via d3-cloud (custom coloring by sentiment)
+  - Horizontal bar chart with `scaleX` from 0
+- **Three.js wireframe icosahedron** added to hero (lazy-loaded via IntersectionObserver, ~600KB deferred)
+- **`api/analyze.js`** stays the same — backend untouched
+
 ### Added
-- Comprehensive README rewrite with badges, architecture diagram, sample output, and ethics section
-- `package.json` keywords, author, repository, and `engines` metadata
-- `npm run analyze:llm` and `npm run analyze:basic` script aliases
+- **Custom cursor** (`cursor.js`): dot + ring with `mix-blend-mode: difference`, lerps to mouse position, grows on interactive elements, hidden on touch devices
+- **Magnetic buttons** (`.magnetic` class): translate toward cursor on hover, integrated with cursor visuals
+- **3D tilt-on-hover** (`.tilt` class): CSS perspective + transform driven by mouse position, applied to cards, tiles, and CTA
+- **Scroll progress bar** at top of viewport
+- **Marquee** with pause-on-hover
+- **Bento grid** layout for the "What it does" section
+- **Animated tab underline** that slides between tabs
+- **Animated number counters** that count up from 0 when scrolled into view
+- **Bench bars** that animate from 0 to value on scroll into view
+- **IntersectionObserver-driven reveal** with optional delay
+- **Skeleton shimmer** during streaming LLM responses
+- **Reduced-motion support** throughout (`prefers-reduced-motion` disables animations)
+- **Import map** for ES modules: three, d3, d3-cloud, marked loaded from esm.sh (no build step)
+- **`three`, `d3`, `d3-cloud`, `marked`** as npm dependencies
 
 ## [1.2.1] — 2026-06-10
 

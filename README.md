@@ -19,13 +19,13 @@
 
 <div align="center">
 
-[![Live Demo](https://img.shields.io/badge/🚀_Live_Demo-7aa2f7?style=for-the-badge)](https://github.com/404Piyush/google-maps-review-analyzer/tree/main/demo)
+[![Live Demo](https://img.shields.io/badge/🚀_Live_Demo-0a0a0a?style=for-the-badge)](https://repo-dun-six.vercel.app)
 [![Colab](https://img.shields.io/badge/▶_Open_in_Colab-F9AB00?style=for-the-badge&logo=googlecolab&logoColor=white)](https://github.com/404Piyush/google-maps-review-analyzer/blob/main/notebooks/colab.ipynb)
 [![Lightning AI](https://img.shields.io/badge/⚡_Lightning_AI-792EE5?style=for-the-badge)](https://github.com/404Piyush/google-maps-review-analyzer/blob/main/notebooks/lightning-ai.md)
 
 </div>
 
-> **⚡ What's new in v1.2.0:** ~4–6× faster end-to-end, **OpenRouter provider** (no local GPU needed), **Google Places API** path (no proxies), static **live demo page**, Colab + Lightning AI notebooks, full GitHub polish (CI, issue templates, Dependabot).
+> **🎨 What's new in v1.3.0:** Complete editorial redesign of the demo page (cream + ink + acid green, Fraunces serif display, D3.js custom viz, Three.js wireframe icosahedron in hero, custom cursor, magnetic buttons, 3D tilt-on-hover). Backend API unchanged — same Nemotron 3 Ultra 550B streaming.
 
 ---
 
