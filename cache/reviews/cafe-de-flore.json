@@ -1,0 +1,240 @@
+{
+  "place_id": "cafe-de-flore",
+  "name": "Caf\u00e9 de Flore",
+  "search_query": "Caf\u00e9 de Flore Paris",
+  "maps_url": "https://maps.app.goo.gl/YOUR_CAFE_DE_FLORE_URL",
+  "rating": 4.0,
+  "reviews_count_estimate": 8420,
+  "reviews": [
+    {
+      "author": "Olivier D.",
+      "stars": 5,
+      "time": "1 month ago",
+      "text": "Order the croque-monsieur and a citron press\u00e9. The combo is perfect."
+    },
+    {
+      "author": "Antoine B.",
+      "stars": 5,
+      "time": "2 years ago",
+      "text": "Expensive, yes. But you are not paying for coffee, you are paying for the room you are sitting in."
+    },
+    {
+      "author": "Tom H.",
+      "stars": 4,
+      "time": "1 day ago",
+      "text": "Expensive, yes. But you are not paying for coffee, you are paying for the room you are sitting in."
+    },
+    {
+      "author": "Luis G.",
+      "stars": 5,
+      "time": "1 day ago",
+      "text": "Waiter was grumpy but it somehow felt appropriate."
+    },
+    {
+      "author": "Hugo L.",
+      "stars": 4,
+      "time": "2 years ago",
+      "text": "If you go, sit facing the street. Trust me."
+    },
+    {
+      "author": "Thomas W.",
+      "stars": 5,
+      "time": "2 months ago",
+      "text": "The terrasse is everything you imagine. Hot chocolate thick enough to stand a spoon in."
+    },
+    {
+      "author": "Pierre L.",
+      "stars": 3,
+      "time": "10 months ago",
+      "text": "I enjoyed it but I can think of 10 better places in the 6th."
+    },
+    {
+      "author": "Yuki S.",
+      "stars": 5,
+      "time": "5 months ago",
+      "text": "The history is palpable. Sartre, Beauvoir, Picasso. They all sat at these tables."
+    },
+    {
+      "author": "Antoine B.",
+      "stars": 5,
+      "time": "6 months ago",
+      "text": "Came on a Tuesday at 3pm. Got the corner table. Did not move for three hours. No regrets."
+    },
+    {
+      "author": "Mia C.",
+      "stars": 4,
+      "time": "2 days ago",
+      "text": "Croque-monsieur is the platonic ideal of a croque-monsieur."
+    },
+    {
+      "author": "Lila N.",
+      "stars": 5,
+      "time": "8 months ago",
+      "text": "Expensive, yes. But you are not paying for coffee, you are paying for the room you are sitting in."
+    },
+    {
+      "author": "Ben R.",
+      "stars": 4,
+      "time": "6 months ago",
+      "text": "Waiter was grumpy but it somehow felt appropriate."
+    },
+    {
+      "author": "Tom H.",
+      "stars": 4,
+      "time": "1 month ago",
+      "text": "Best people-watching spot in Saint-Germain. Also the worst if you are easily distracted."
+    },
+    {
+      "author": "Anna S.",
+      "stars": 1,
+      "time": "1 month ago",
+      "text": "Service was cold. Waiter looked through me like I was not there."
+    },
+    {
+      "author": "Sven O.",
+      "stars": 5,
+      "time": "6 months ago",
+      "text": "We came back twice in four days. That says everything."
+    },
+    {
+      "author": "Yuki S.",
+      "stars": 5,
+      "time": "2 months ago",
+      "text": "Expensive, yes. But you are not paying for coffee, you are paying for the room you are sitting in."
+    },
+    {
+      "author": "Pierre L.",
+      "stars": 4,
+      "time": "2 years ago",
+      "text": "Order the croque-monsieur and a citron press\u00e9. The combo is perfect."
+    },
+    {
+      "author": "Marco R.",
+      "stars": 5,
+      "time": "2 months ago",
+      "text": "Order the croque-monsieur and a citron press\u00e9. The combo is perfect."
+    },
+    {
+      "author": "Ben R.",
+      "stars": 4,
+      "time": "2 days ago",
+      "text": "Order the croque-monsieur and a citron press\u00e9. The combo is perfect."
+    },
+    {
+      "author": "Mia C.",
+      "stars": 3,
+      "time": "5 months ago",
+      "text": "Worth one visit for the cultural r\u00e9sum\u00e9 alone."
+    },
+    {
+      "author": "Yuki S.",
+      "stars": 5,
+      "time": "5 months ago",
+      "text": "Waiter was grumpy but it somehow felt appropriate."
+    },
+    {
+      "author": "Marco R.",
+      "stars": 4,
+      "time": "1 year ago",
+      "text": "Hot chocolate is the most over-the-top thing I have ever drunk. Worth every euro."
+    },
+    {
+      "author": "Hannah K.",
+      "stars": 5,
+      "time": "2 years ago",
+      "text": "Watched an old man read Le Monde for two hours next to me. Did not look up once. Aspirational."
+    },
+    {
+      "author": "Aaliyah K.",
+      "stars": 4,
+      "time": "8 months ago",
+      "text": "Came on a Tuesday at 3pm. Got the corner table. Did not move for three hours. No regrets."
+    },
+    {
+      "author": "Marie C.",
+      "stars": 5,
+      "time": "18 months ago",
+      "text": "Came in the rain, sat inside. Felt like being in a novel. Worth the price once."
+    },
+    {
+      "author": "Tom H.",
+      "stars": 5,
+      "time": "5 days ago",
+      "text": "Hot chocolate is the most over-the-top thing I have ever drunk. Worth every euro."
+    },
+    {
+      "author": "Mia C.",
+      "stars": 4,
+      "time": "10 months ago",
+      "text": "Expensive, yes. But you are not paying for coffee, you are paying for the room you are sitting in."
+    },
+    {
+      "author": "Nora E.",
+      "stars": 5,
+      "time": "1 year ago",
+      "text": "Tarte tatin is excellent. The whipped cr\u00e8me fra\u00eeche is the move."
+    },
+    {
+      "author": "In\u00e8s D.",
+      "stars": 5,
+      "time": "1 day ago",
+      "text": "The history is palpable. Sartre, Beauvoir, Picasso. They all sat at these tables."
+    },
+    {
+      "author": "In\u00e8s D.",
+      "stars": 4,
+      "time": "2 months ago",
+      "text": "The terrace in winter with blankets is something else. Pure Parisian clich\u00e9, but you have to do it."
+    },
+    {
+      "author": "Aaliyah K.",
+      "stars": 5,
+      "time": "2 weeks ago",
+      "text": "Croque-monsieur is the platonic ideal of a croque-monsieur."
+    },
+    {
+      "author": "Sara P.",
+      "stars": 5,
+      "time": "2 months ago",
+      "text": "Tarte tatin is excellent. The whipped cr\u00e8me fra\u00eeche is the move."
+    },
+    {
+      "author": "Luis G.",
+      "stars": 3,
+      "time": "5 days ago",
+      "text": "I enjoyed it but I can think of 10 better places in the 6th."
+    },
+    {
+      "author": "Luis G.",
+      "stars": 3,
+      "time": "3 weeks ago",
+      "text": "It is what it is. Famous caf\u00e9, famous prices, decent coffee."
+    },
+    {
+      "author": "Pierre L.",
+      "stars": 5,
+      "time": "2 years ago",
+      "text": "Tarte tatin is excellent. The whipped cr\u00e8me fra\u00eeche is the move."
+    },
+    {
+      "author": "Nora E.",
+      "stars": 2,
+      "time": "5 months ago",
+      "text": "If you want the experience, go. If you want good coffee, go literally anywhere else."
+    },
+    {
+      "author": "Lila N.",
+      "stars": 5,
+      "time": "6 months ago",
+      "text": "Best people-watching spot in Saint-Germain. Also the worst if you are easily distracted."
+    },
+    {
+      "author": "Hannah K.",
+      "stars": 5,
+      "time": "3 days ago",
+      "text": "Expensive, yes. But you are not paying for coffee, you are paying for the room you are sitting in."
+    }
+  ],
+  "scraped_at": "2026-07-14T00:00:00Z",
+  "source": "scraper-demo-cache"
+}

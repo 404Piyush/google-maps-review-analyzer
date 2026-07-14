@@ -1,0 +1,300 @@
+{
+  "place_id": "gymkhana",
+  "name": "Gymkhana",
+  "search_query": "Gymkhana New Delhi",
+  "maps_url": "https://maps.app.goo.gl/YOUR_GYMKHANA_URL",
+  "rating": 4.6,
+  "reviews_count_estimate": 4520,
+  "reviews": [
+    {
+      "author": "Aarti P.",
+      "stars": 4,
+      "time": "2 weeks ago",
+      "text": "Finally Indian food that does not pander to anyone. Spicy when it says spicy."
+    },
+    {
+      "author": "Chris H.",
+      "stars": 5,
+      "time": "1 month ago",
+      "text": "The setting is colonial but the food is postcolonial. Important distinction."
+    },
+    {
+      "author": "Vikram J.",
+      "stars": 2,
+      "time": "1 month ago",
+      "text": "Portions are small for the price."
+    },
+    {
+      "author": "Sam K.",
+      "stars": 4,
+      "time": "2 months ago",
+      "text": "I have eaten Indian food across three continents. Gymkhana is doing things nobody else is."
+    },
+    {
+      "author": "Sam K.",
+      "stars": 5,
+      "time": "3 months ago",
+      "text": "I have eaten Indian food across three continents. Gymkhana is doing things nobody else is."
+    },
+    {
+      "author": "Tom R.",
+      "stars": 5,
+      "time": "1 year ago",
+      "text": "Worth the wait. The lamb raan alone justifies a flight to Delhi."
+    },
+    {
+      "author": "Tara B.",
+      "stars": 1,
+      "time": "10 months ago",
+      "text": "Service forgot two of our orders. Had to remind three times."
+    },
+    {
+      "author": "Tara B.",
+      "stars": 5,
+      "time": "3 weeks ago",
+      "text": "Tasting menu is the move. Trust the kitchen."
+    },
+    {
+      "author": "Anjali M.",
+      "stars": 2,
+      "time": "1 month ago",
+      "text": "Portions are small for the price."
+    },
+    {
+      "author": "Ian M.",
+      "stars": 4,
+      "time": "3 months ago",
+      "text": "Paneer tikka was the surprise hit. I usually avoid it. Not here."
+    },
+    {
+      "author": "Anita S.",
+      "stars": 5,
+      "time": "8 months ago",
+      "text": "Reservations impossible. Got in at 10pm on a Tuesday."
+    },
+    {
+      "author": "Anita S.",
+      "stars": 5,
+      "time": "2 days ago",
+      "text": "I live in London and miss this place."
+    },
+    {
+      "author": "Tara B.",
+      "stars": 4,
+      "time": "1 month ago",
+      "text": "I live in London and miss this place."
+    },
+    {
+      "author": "Sneha R.",
+      "stars": 3,
+      "time": "3 weeks ago",
+      "text": "Tasting menu is the only way to go."
+    },
+    {
+      "author": "Saoirse D.",
+      "stars": 5,
+      "time": "1 week ago",
+      "text": "I have eaten Indian food across three continents. Gymkhana is doing things nobody else is."
+    },
+    {
+      "author": "Rohit P.",
+      "stars": 5,
+      "time": "2 days ago",
+      "text": "Reservations impossible. Got in at 10pm on a Tuesday."
+    },
+    {
+      "author": "Priya S.",
+      "stars": 3,
+      "time": "6 months ago",
+      "text": "Tasting menu is the only way to go."
+    },
+    {
+      "author": "Tara B.",
+      "stars": 5,
+      "time": "5 months ago",
+      "text": "Paneer tikka was the surprise hit. I usually avoid it. Not here."
+    },
+    {
+      "author": "Daniel W.",
+      "stars": 5,
+      "time": "1 week ago",
+      "text": "The biryani is the best I have had. Anywhere."
+    },
+    {
+      "author": "Meera L.",
+      "stars": 5,
+      "time": "18 months ago",
+      "text": "Service is sharp. Knows the menu. Knows the spice levels."
+    },
+    {
+      "author": "Aarti P.",
+      "stars": 2,
+      "time": "2 months ago",
+      "text": "Portions are small for the price."
+    },
+    {
+      "author": "Tara B.",
+      "stars": 1,
+      "time": "5 months ago",
+      "text": "Good food, oddly cold service for an Indian restaurant."
+    },
+    {
+      "author": "Tom R.",
+      "stars": 5,
+      "time": "1 week ago",
+      "text": "The biryani is the best I have had. Anywhere."
+    },
+    {
+      "author": "Anita S.",
+      "stars": 1,
+      "time": "8 months ago",
+      "text": "We waited 40 minutes for a table despite a reservation."
+    },
+    {
+      "author": "Chris H.",
+      "stars": 5,
+      "time": "1 day ago",
+      "text": "Reservations impossible. Got in at 10pm on a Tuesday."
+    },
+    {
+      "author": "Sam K.",
+      "stars": 5,
+      "time": "6 months ago",
+      "text": "I have eaten Indian food across three continents. Gymkhana is doing things nobody else is."
+    },
+    {
+      "author": "Henry G.",
+      "stars": 4,
+      "time": "8 months ago",
+      "text": "I have eaten Indian food across three continents. Gymkhana is doing things nobody else is."
+    },
+    {
+      "author": "Anjali M.",
+      "stars": 1,
+      "time": "1 month ago",
+      "text": "Portions are small for the price."
+    },
+    {
+      "author": "Pooja V.",
+      "stars": 5,
+      "time": "5 months ago",
+      "text": "I live in London and miss this place."
+    },
+    {
+      "author": "Tom R.",
+      "stars": 5,
+      "time": "1 year ago",
+      "text": "Paneer tikka was the surprise hit. I usually avoid it. Not here."
+    },
+    {
+      "author": "Diya N.",
+      "stars": 5,
+      "time": "5 days ago",
+      "text": "Finally Indian food that does not pander to anyone. Spicy when it says spicy."
+    },
+    {
+      "author": "Priya S.",
+      "stars": 5,
+      "time": "3 months ago",
+      "text": "The setting is colonial but the food is postcolonial. Important distinction."
+    },
+    {
+      "author": "Sneha R.",
+      "stars": 5,
+      "time": "2 years ago",
+      "text": "Finally Indian food that does not pander to anyone. Spicy when it says spicy."
+    },
+    {
+      "author": "Meera L.",
+      "stars": 5,
+      "time": "2 years ago",
+      "text": "Tasting menu is the move. Trust the kitchen."
+    },
+    {
+      "author": "Ishaan V.",
+      "stars": 4,
+      "time": "1 week ago",
+      "text": "Tasting menu is the move. Trust the kitchen."
+    },
+    {
+      "author": "Riya T.",
+      "stars": 4,
+      "time": "10 months ago",
+      "text": "Reservations impossible. Got in at 10pm on a Tuesday."
+    },
+    {
+      "author": "Meera L.",
+      "stars": 5,
+      "time": "3 weeks ago",
+      "text": "The setting is colonial but the food is postcolonial. Important distinction."
+    },
+    {
+      "author": "Sneha R.",
+      "stars": 5,
+      "time": "6 months ago",
+      "text": "The cocktail list is also serious."
+    },
+    {
+      "author": "Meera L.",
+      "stars": 1,
+      "time": "2 years ago",
+      "text": "Service forgot two of our orders. Had to remind three times."
+    },
+    {
+      "author": "Chris H.",
+      "stars": 5,
+      "time": "2 months ago",
+      "text": "Goat curry is exceptional. Not vindaloo, not korma. Goat curry."
+    },
+    {
+      "author": "Sam K.",
+      "stars": 1,
+      "time": "3 days ago",
+      "text": "Service forgot two of our orders. Had to remind three times."
+    },
+    {
+      "author": "Rohit P.",
+      "stars": 5,
+      "time": "1 day ago",
+      "text": "The wild boar dosa is the single best thing I have eaten this year."
+    },
+    {
+      "author": "Sneha R.",
+      "stars": 3,
+      "time": "1 week ago",
+      "text": "Tasting menu is the only way to go."
+    },
+    {
+      "author": "Saoirse D.",
+      "stars": 5,
+      "time": "2 years ago",
+      "text": "Goat curry is exceptional. Not vindaloo, not korma. Goat curry."
+    },
+    {
+      "author": "Sneha R.",
+      "stars": 4,
+      "time": "5 months ago",
+      "text": "The biryani is the best I have had. Anywhere."
+    },
+    {
+      "author": "Kavya D.",
+      "stars": 5,
+      "time": "1 day ago",
+      "text": "Reservations impossible. Got in at 10pm on a Tuesday."
+    },
+    {
+      "author": "Vikram J.",
+      "stars": 2,
+      "time": "1 week ago",
+      "text": "We waited 40 minutes for a table despite a reservation."
+    },
+    {
+      "author": "Aarti P.",
+      "stars": 5,
+      "time": "5 days ago",
+      "text": "I have eaten Indian food across three continents. Gymkhana is doing things nobody else is."
+    }
+  ],
+  "scraped_at": "2026-07-14T00:00:00Z",
+  "source": "scraper-demo-cache"
+}

@@ -1,0 +1,222 @@
+{
+  "place_id": "septime",
+  "name": "Septime",
+  "search_query": "Septime Paris",
+  "maps_url": "https://maps.app.goo.gl/YOUR_SEPTIME_URL",
+  "rating": 4.7,
+  "reviews_count_estimate": 3120,
+  "reviews": [
+    {
+      "author": "L\u00e9a P.",
+      "stars": 5,
+      "time": "1 month ago",
+      "text": "The bread is from a baker I had never heard of and it changed my bread opinions."
+    },
+    {
+      "author": "Lucas R.",
+      "stars": 5,
+      "time": "2 months ago",
+      "text": "Set lunch for 48 euros is the greatest restaurant deal in Paris. Possibly the world."
+    },
+    {
+      "author": "Jade B.",
+      "stars": 5,
+      "time": "18 months ago",
+      "text": "The cooking is serious without being pompous."
+    },
+    {
+      "author": "Margaux R.",
+      "stars": 4,
+      "time": "1 year ago",
+      "text": "Do not try the a la carte. The set menu is the whole point."
+    },
+    {
+      "author": "Pierre G.",
+      "stars": 5,
+      "time": "1 year ago",
+      "text": "Three hours felt like ninety minutes."
+    },
+    {
+      "author": "Zo\u00e9 M.",
+      "stars": 5,
+      "time": "2 days ago",
+      "text": "I am a regular. That should tell you everything."
+    },
+    {
+      "author": "Manon L.",
+      "stars": 3,
+      "time": "18 months ago",
+      "text": "If you are in Paris and cannot get a reservation, there are 200 other great bistros."
+    },
+    {
+      "author": "Camille L.",
+      "stars": 5,
+      "time": "2 days ago",
+      "text": "Bertrand Grebaut cooks like nobody else in Paris. Less butter. More acid. More restraint."
+    },
+    {
+      "author": "Jade B.",
+      "stars": 3,
+      "time": "5 days ago",
+      "text": "If you are in Paris and cannot get a reservation, there are 200 other great bistros."
+    },
+    {
+      "author": "Nicolas H.",
+      "stars": 4,
+      "time": "3 days ago",
+      "text": "The cooking is serious without being pompous."
+    },
+    {
+      "author": "Emma D.",
+      "stars": 5,
+      "time": "3 days ago",
+      "text": "Booked three weeks in advance on the website. Got in at lunch."
+    },
+    {
+      "author": "Jules B.",
+      "stars": 5,
+      "time": "2 years ago",
+      "text": "I am a regular. That should tell you everything."
+    },
+    {
+      "author": "Zo\u00e9 M.",
+      "stars": 5,
+      "time": "18 months ago",
+      "text": "If you can get a table, go."
+    },
+    {
+      "author": "Zo\u00e9 M.",
+      "stars": 5,
+      "time": "10 months ago",
+      "text": "The cooking is serious without being pompous."
+    },
+    {
+      "author": "Pierre G.",
+      "stars": 3,
+      "time": "2 years ago",
+      "text": "It is fine. It is also very hard to get into."
+    },
+    {
+      "author": "Alice T.",
+      "stars": 5,
+      "time": "10 months ago",
+      "text": "Do not try the a la carte. The set menu is the whole point."
+    },
+    {
+      "author": "Maxime L.",
+      "stars": 3,
+      "time": "10 months ago",
+      "text": "It is fine. It is also very hard to get into."
+    },
+    {
+      "author": "Antoine F.",
+      "stars": 5,
+      "time": "2 months ago",
+      "text": "Do not try the a la carte. The set menu is the whole point."
+    },
+    {
+      "author": "Manon L.",
+      "stars": 1,
+      "time": "14 months ago",
+      "text": "Overrated. Good food but the hype has gone to everyone's heads."
+    },
+    {
+      "author": "Sarah K.",
+      "stars": 5,
+      "time": "3 days ago",
+      "text": "The wine list is short and slightly weird. Which is exactly the point."
+    },
+    {
+      "author": "Camille R.",
+      "stars": 5,
+      "time": "6 months ago",
+      "text": "Booked three weeks in advance on the website. Got in at lunch."
+    },
+    {
+      "author": "Etienne D.",
+      "stars": 4,
+      "time": "2 years ago",
+      "text": "Three hours felt like ninety minutes."
+    },
+    {
+      "author": "Pierre G.",
+      "stars": 5,
+      "time": "10 months ago",
+      "text": "Do not try the a la carte. The set menu is the whole point."
+    },
+    {
+      "author": "Jade B.",
+      "stars": 2,
+      "time": "2 days ago",
+      "text": "Service can be chilly."
+    },
+    {
+      "author": "L\u00e9a P.",
+      "stars": 4,
+      "time": "5 days ago",
+      "text": "The bread is from a baker I had never heard of and it changed my bread opinions."
+    },
+    {
+      "author": "Emma D.",
+      "stars": 5,
+      "time": "14 months ago",
+      "text": "Will think about the roasted carrot dish for years."
+    },
+    {
+      "author": "L\u00e9a P.",
+      "stars": 3,
+      "time": "2 years ago",
+      "text": "If you are in Paris and cannot get a reservation, there are 200 other great bistros."
+    },
+    {
+      "author": "Theo C.",
+      "stars": 5,
+      "time": "1 month ago",
+      "text": "The wine list is short and slightly weird. Which is exactly the point."
+    },
+    {
+      "author": "Zo\u00e9 M.",
+      "stars": 3,
+      "time": "2 years ago",
+      "text": "It is fine. It is also very hard to get into."
+    },
+    {
+      "author": "Manon L.",
+      "stars": 4,
+      "time": "2 months ago",
+      "text": "Set lunch for 48 euros is the greatest restaurant deal in Paris. Possibly the world."
+    },
+    {
+      "author": "Louis D.",
+      "stars": 5,
+      "time": "3 months ago",
+      "text": "Do not try the a la carte. The set menu is the whole point."
+    },
+    {
+      "author": "Lucas R.",
+      "stars": 5,
+      "time": "1 week ago",
+      "text": "The bread is from a baker I had never heard of and it changed my bread opinions."
+    },
+    {
+      "author": "Sarah K.",
+      "stars": 4,
+      "time": "1 week ago",
+      "text": "I am a regular. That should tell you everything."
+    },
+    {
+      "author": "Camille L.",
+      "stars": 4,
+      "time": "3 days ago",
+      "text": "I am a regular. That should tell you everything."
+    },
+    {
+      "author": "Maxime L.",
+      "stars": 5,
+      "time": "10 months ago",
+      "text": "Bertrand Grebaut cooks like nobody else in Paris. Less butter. More acid. More restraint."
+    }
+  ],
+  "scraped_at": "2026-07-14T00:00:00Z",
+  "source": "scraper-demo-cache"
+}

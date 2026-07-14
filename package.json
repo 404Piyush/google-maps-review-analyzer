@@ -1,6 +1,6 @@
 {
   "name": "google-maps-review-analyzer",
-  "version": "1.2.2",
+  "version": "1.4.0",
   "description": "Stealth-scrape Google Maps reviews via Puppeteer + proxy rotation OR pull via Places API, then generate an executive-grade sentiment report using local Ollama LLMs or OpenRouter free models.",
   "main": "index.js",
   "bin": {
@@ -17,9 +17,10 @@
     "analyze:openrouter": "node topic-analysis.js --provider=openrouter --model=fast",
     "analyze:basic": "node analyze.js",
     "demo": "node demo/serve.js",
+    "dev:web": "node dev-server.js",
     "dev": "node --watch index.js",
     "test": "node --test test/*.test.js",
-    "lint": "for f in index.js topic-analysis.js places-api.js analyze.js bin/cli.js demo/serve.js lib/*.js test/*.js; do [ -f \"$f\" ] && node --check \"$f\"; done",
+    "lint": "for f in index.js topic-analysis.js places-api.js analyze.js bin/cli.js demo/serve.js lib/*.js test/*.js api/*.js; do [ -f \"$f\" ] && node --check \"$f\"; done",
     "test:captcha": "node test-captcha.js"
   },
   "keywords": [

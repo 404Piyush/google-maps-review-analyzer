@@ -195,3 +195,233 @@ async function loadShowcase() {
 }
 
 loadShowcase();
+
+// ============================================
+// 6. Globe story panel — fetches REAL reviews from /api/scrape
+// ============================================
+const storyPanel = document.getElementById('storyPanel');
+const storyClose = storyPanel?.querySelector('.story-close');
+const urlPasteForm = document.getElementById('urlPasteForm');
+const urlPasteInput = document.getElementById('mapsUrl');
+const urlPasteHint = document.getElementById('urlPasteHint');
+
+let currentPlaceData = null;
+
+function setPanelState(state) {
+    storyPanel?.querySelector('.story-loading')?.toggleAttribute('hidden', state !== 'loading');
+    storyPanel?.querySelector('.story-error')?.toggleAttribute('hidden', state !== 'error');
+    storyPanel?.querySelector('.story-content')?.style && (storyPanel.querySelector('.story-content').style.display = state === 'content' ? 'block' : (state === 'content' ? '' : 'none'));
+    if (state === 'content') storyPanel.querySelector('.story-content').style.display = 'block';
+    else storyPanel.querySelector('.story-content').style.display = 'none';
+}
+
+function showLoading() {
+    storyPanel.classList.add('visible');
+    storyPanel.setAttribute('aria-hidden', 'false');
+    storyPanel.querySelector('.story-loading').hidden = false;
+    storyPanel.querySelector('.story-error').hidden = true;
+    storyPanel.querySelector('.story-content').style.display = 'none';
+}
+
+function showError(title, message, hint) {
+    storyPanel.classList.add('visible');
+    storyPanel.setAttribute('aria-hidden', 'false');
+    storyPanel.querySelector('.story-loading').hidden = true;
+    storyPanel.querySelector('.story-error').hidden = false;
+    storyPanel.querySelector('.story-content').style.display = 'none';
+    storyPanel.querySelector('.story-error-title').textContent = title;
+    storyPanel.querySelector('.story-error-message').textContent = message;
+    storyPanel.querySelector('.story-error-hint').textContent = hint || '';
+
+    // Clear stale reviews so error state isn't polluted by previous content
+    document.getElementById('storyReviews').innerHTML = '';
+    document.getElementById('storyReviewCount').textContent = '0';
+    document.getElementById('storyBarPos').style.width = '0%';
+    document.getElementById('storyBarNeu').style.width = '0%';
+    document.getElementById('storyBarNeg').style.width = '0%';
+    document.getElementById('storyProvenance').textContent = '';
+    document.getElementById('storyNarrative').innerHTML = '';
+}
+
+function showContent() {
+    storyPanel.classList.add('visible');
+    storyPanel.setAttribute('aria-hidden', 'false');
+    storyPanel.querySelector('.story-loading').hidden = true;
+    storyPanel.querySelector('.story-error').hidden = true;
+    storyPanel.querySelector('.story-content').style.display = 'block';
+}
+
+function closeStory() {
+    storyPanel?.classList.remove('visible');
+    storyPanel?.setAttribute('aria-hidden', 'true');
+    currentPlaceData = null;
+}
+
+// ============================================
+// Fetch reviews from /api/scrape
+// ============================================
+async function loadPlace(place) {
+    currentPlaceData = place;
+    showLoading();
+
+    // Pre-fill header with optimistic place data while scraping
+    const fill = place.coords ? {
+        name: place.name,
+        location: `${place.city || ''}, ${place.country || ''}`.replace(/^,\s*|\s*,\s*$/g, ''),
+        emoji: place.emoji || '📍',
+        rating: place.rating ? `★ ${place.rating}` : '',
+        tagline: place.tagline || '',
+    } : { name: place.name || 'Loading…', location: '', emoji: '📍', rating: '', tagline: '' };
+
+    storyPanel.querySelector('.story-name').textContent = fill.name;
+    storyPanel.querySelector('.story-location').textContent = fill.location;
+    storyPanel.querySelector('.story-emoji').textContent = fill.emoji;
+    storyPanel.querySelector('.story-rating').textContent = fill.rating;
+    storyPanel.querySelector('.story-tagline').textContent = fill.tagline;
+
+    try {
+        let url;
+        if (place.id) {
+            url = `/api/scrape?id=${encodeURIComponent(place.id)}`;
+        } else if (place.mapsUrl) {
+            url = `/api/scrape?url=${encodeURIComponent(place.mapsUrl)}`;
+        } else if (place.query) {
+            url = `/api/scrape?query=${encodeURIComponent(place.query)}`;
+        } else {
+            throw new Error('No place id, URL, or query provided');
+        }
+
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (!res.ok || !data.ok) {
+            const hint = data.hint ? `\n\n${data.hint}` : '';
+            showError(
+                'No cached scrape for this place',
+                data.message || data.error || 'Unknown error',
+                hint
+            );
+            return;
+        }
+
+        renderReviews(data);
+    } catch (err) {
+        showError('Network error', err.message, 'Is the API server running? Try `npm run dev` locally.');
+    }
+}
+
+function renderReviews(data) {
+    const { place, reviews, scraped_at, source } = data;
+
+    // Header
+    storyPanel.querySelector('.story-name').textContent = place.name;
+    storyPanel.querySelector('.story-location').textContent = '';
+    storyPanel.querySelector('.story-emoji').textContent = '';
+    storyPanel.querySelector('.story-rating').textContent = place.rating ? `★ ${place.rating}` : '';
+    storyPanel.querySelector('.story-tagline').textContent =
+        `${place.reviews_count_estimate?.toLocaleString() || reviews.length} reviews on Google Maps`;
+
+    // Sentiment stats
+    const pos = reviews.filter(r => r.stars >= 4).length;
+    const neu = reviews.filter(r => r.stars === 3).length;
+    const neg = reviews.filter(r => r.stars <= 2).length;
+    const total = reviews.length || 1;
+    document.getElementById('storyReviewCount').textContent = reviews.length;
+    document.getElementById('storyBarPos').style.width = `${(pos / total) * 100}%`;
+    document.getElementById('storyBarNeu').style.width = `${(neu / total) * 100}%`;
+    document.getElementById('storyBarNeg').style.width = `${(neg / total) * 100}%`;
+
+    // Provenance
+    const prov = document.getElementById('storyProvenance');
+    const date = scraped_at ? new Date(scraped_at).toLocaleDateString() : 'unknown';
+    prov.textContent = `Scraped ${date} · source: ${source || 'cache'}`;
+
+    // Reviews list
+    const reviewsEl = document.getElementById('storyReviews');
+    reviewsEl.innerHTML = reviews.map(r => `
+        <article class="story-review">
+            <div class="story-review-head">
+                <span class="story-review-author">${escapeHtml(r.author || 'Anonymous')}</span>
+                <span class="story-review-meta">
+                    <span class="story-review-stars">${'★'.repeat(r.stars)}${'☆'.repeat(5 - r.stars)}</span>
+                    <span class="story-review-time">${escapeHtml(r.time || '')}</span>
+                </span>
+            </div>
+            <p class="story-review-text">${escapeHtml(r.text || '')}</p>
+        </article>
+    `).join('');
+
+    // Reset narrative
+    const narrativeEl = document.getElementById('storyNarrative');
+    narrativeEl.innerHTML = '<p class="story-narrative-empty">Click regenerate to get an AI-written summary of these reviews.</p>';
+
+    showContent();
+}
+
+function escapeHtml(s) {
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// ============================================
+// Wire up events
+// ============================================
+window.addEventListener('globe:select', (e) => loadPlace(e.detail));
+
+storyClose?.addEventListener('click', closeStory);
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && storyPanel?.classList.contains('visible')) closeStory();
+});
+
+urlPasteForm?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const url = urlPasteInput.value.trim();
+    if (!url) return;
+    urlPasteHint.innerHTML = `Resolving <code>${escapeHtml(url.slice(0, 60))}${url.length > 60 ? '…' : ''}</code> and scraping…`;
+    loadPlace({ mapsUrl: url });
+});
+
+// ============================================
+// AI summary via /api/analyze
+// ============================================
+const analyzeBtn = document.getElementById('storyAnalyzeBtn');
+analyzeBtn?.addEventListener('click', async () => {
+    if (!currentPlaceData) return;
+    const reviews = Array.from(document.querySelectorAll('#storyReviews .story-review-text')).map(el => ({
+        text: el.textContent,
+        stars: 4,
+    }));
+    if (reviews.length === 0) return;
+
+    analyzeBtn.disabled = true;
+    analyzeBtn.textContent = 'Streaming…';
+    const narrativeEl = document.getElementById('storyNarrative');
+    narrativeEl.textContent = '';
+
+    try {
+        const res = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reviews, model: 'nvidia/nemotron-3-ultra-550b-a55b:free' }),
+        });
+        if (!res.ok) throw new Error(`API ${res.status}`);
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            const chunk = decoder.decode(value, { stream: true });
+            narrativeEl.textContent += chunk;
+        }
+    } catch (err) {
+        narrativeEl.textContent = `AI summary failed: ${err.message}`;
+    } finally {
+        analyzeBtn.disabled = false;
+        analyzeBtn.textContent = 'Regenerate';
+    }
+});
