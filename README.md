@@ -60,34 +60,39 @@ No cloud APIs. No data leaves your machine. The LLM runs locally via [Ollama](ht
 ## 🏗️ Architecture
 
 ```
-┌──────────────────────────────────────────────────────────────────────┐
-│  index.js  (puppeteer-extra + stealth)                                │
-│                                                                       │
-│  for each proxy in proxies.txt:                                       │
-│      ┌──────────────────────────────────────────┐                     │
-│      │ launch headless browser → authenticate → │                     │
-│      │ goto Maps URL → click "Reviews" tab →    │                     │
-│      │ scroll until stable → extract nodes  →   │                     │
-│      │ write reviews.json + reviews.html        │                     │
-│      └──────────────────────────────────────────┘                     │
-│                  │ CAPTCHA?   → screenshot, try next proxy            │
-│                  ▼                                                     │
-│          reviews.json                                                   │
-└──────────────────────────────────────────────────────────────────────┘
-                  │
-                  ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│  topic-analysis.js  (Ollama, two-phase)                                 │
-│                                                                       │
-│   Phase 1  ── gemma2:2b   ── per-review topics + sentiment (parallel) │
-│             └─► intermediate-analysis.json                            │
-│                                                                       │
-│   Phase 2  ── qwen3:8b    ── write full report from aggregated data  │
-│             └─► analysis-report.md                                    │
-└──────────────────────────────────────────────────────────────────────┘
-
-  analyze.js  ──── (optional) simple keyword sentiment, no LLM needed
+    ┌──────────────────────────────────────────────────────────────────┐
+    │  TIER 1 — DATA ACQUISITION         (Node CLI, runs locally)       │
+    │  ────────────────────────                                         │
+    │   index.js          puppeteer-extra + stealth, parallel proxies, │
+    │                     adaptive scroll, URL cache, streaming writes  │
+    │                     →  extracted-reviews.json                     │
+    │   places-api.js     official Google Places API (same schema)       │
+    │                     →  extracted-reviews.json                     │
+    └──────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+    ┌──────────────────────────────────────────────────────────────────┐
+    │  TIER 2 — ANALYSIS                   (Node CLI, runs locally)     │
+    │  ────────────────                                                 │
+    │   topic-analysis.js  Phase 1: gemma2:2b → per-review topics       │
+    │                     Phase 2: qwen3:8b  → executive markdown       │
+    │                     →  intermediate-analysis.json                 │
+    │                     →  analysis-report.md                         │
+    │   analyze.js         offline keyword baseline (no LLM)            │
+    └──────────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+    ┌──────────────────────────────────────────────────────────────────┐
+    │  TIER 3 — DEMO FRONTEND          (browser, deployed on Vercel)    │
+    │  ─────────────────────                                           │
+    │   Tab 1: Showcase       pre-bundled sample-reviews.json           │
+    │   Tab 2: Paste JSON     client-side AFINN + topic extraction       │
+    │   Tab 3: Live           POST /api/analyze ──► OpenRouter (SSE)    │
+    │                         ──► Nemotron 3 Ultra 550B (free)          │
+    └──────────────────────────────────────────────────────────────────┘
 ```
+
+Full module-by-module breakdown, deployment topology, and data flow → **[ARCHITECTURE.md](ARCHITECTURE.md)**
 
 ---
 
