@@ -131,22 +131,54 @@ async function initGlobe(container) {
                     side: THREE.DoubleSide,
                 });
 
+                // Subdivide long ring edges on the sphere surface so adjacent triangles
+                // don't span huge arcs (which would show as visible facets).
+                // Returns array of [x,y,z] vertices on the sphere at radius R.
+                function subdivideRing(ring, R, maxEdgeRad = 0.025) {
+                    const out = [];
+                    for (let i = 0; i < ring.length - 1; i++) {
+                        const [lng1, lat1] = ring[i];
+                        const [lng2, lat2] = ring[i + 1];
+                        const p1 = latLngToCoords(lat1, lng1, R);
+                        const p2 = latLngToCoords(lat2, lng2, R);
+                        // Angle between the two points
+                        const dot = (p1.x * p2.x + p1.y * p2.y + p1.z * p2.z) / (R * R);
+                        const angle = Math.acos(Math.min(1, Math.max(-1, dot)));
+                        const steps = Math.max(1, Math.ceil(angle / maxEdgeRad));
+                        for (let s = 0; s < steps; s++) {
+                            const t = s / steps;
+                            const sinA = Math.sin(angle);
+                            const w1 = Math.sin((1 - t) * angle) / sinA;
+                            const w2 = Math.sin(t * angle) / sinA;
+                            out.push([w1 * p1.x + w2 * p2.x,
+                                      w1 * p1.y + w2 * p2.y,
+                                      w1 * p1.z + w2 * p2.z]);
+                        }
+                    }
+                    return out;
+                }
+
+                // Build land geometry by fan-triangulating from the first vertex of the
+                // heavily-subdivided ring. Vertices live on the sphere surface so the
+                // fan triangles curve with the globe naturally.
                 function buildLandGeometry(ring, R) {
                     if (!ring || ring.length < 3) return null;
-                    const positions = [];
-                    const indices = [];
-                    for (const [lng, lat] of ring) {
-                        const v = latLngToCoords(lat, lng, R);
-                        positions.push(v.x, v.y, v.z);
+                    const v = subdivideRing(ring, R);
+                    if (v.length < 3) return null;
+
+                    const positions = new Float32Array(v.length * 3);
+                    for (let i = 0; i < v.length; i++) {
+                        positions[i * 3]     = v[i][0];
+                        positions[i * 3 + 1] = v[i][1];
+                        positions[i * 3 + 2] = v[i][2];
                     }
-                    // Fan triangulate from the first vertex
-                    for (let i = 1; i < ring.length - 1; i++) {
+                    const indices = [];
+                    for (let i = 1; i < v.length - 1; i++) {
                         indices.push(0, i, i + 1);
                     }
                     const geo = new THREE.BufferGeometry();
-                    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
                     geo.setIndex(indices);
-                    geo.computeVertexNormals();
                     return geo;
                 }
 
@@ -163,20 +195,41 @@ async function initGlobe(container) {
                     });
                 });
 
-                // Country border — lines drawn slightly above the fill
+                // Country border — slerp-subdivided for smooth curves
                 const lineMat = new THREE.LineBasicMaterial({
                     color: 0x6b5a36,
                     transparent: true,
                     opacity: 0.85,
                 });
+                function ringToPoints(ring) {
+                    const pts = [];
+                    for (let i = 0; i < ring.length - 1; i++) {
+                        const [lng1, lat1] = ring[i];
+                        const [lng2, lat2] = ring[i + 1];
+                        const p1 = latLngToCoords(lat1, lng1, GLOBE_R * 1.003);
+                        const p2 = latLngToCoords(lat2, lng2, GLOBE_R * 1.003);
+                        const dot = (p1.x * p2.x + p1.y * p2.y + p1.z * p2.z) / (GLOBE_R * GLOBE_R * 1.003 * 1.003);
+                        const angle = Math.acos(Math.min(1, Math.max(-1, dot)));
+                        const steps = Math.max(1, Math.ceil(angle / 0.04));
+                        for (let s = 0; s < steps; s++) {
+                            const t = s / steps;
+                            const sinA = Math.sin(angle);
+                            const w1 = Math.sin((1 - t) * angle) / sinA;
+                            const w2 = Math.sin(t * angle) / sinA;
+                            pts.push(new THREE.Vector3(
+                                w1 * p1.x + w2 * p2.x,
+                                w1 * p1.y + w2 * p2.y,
+                                w1 * p1.z + w2 * p2.z
+                            ));
+                        }
+                    }
+                    return pts;
+                }
                 countries.features.forEach(c => {
                     const polys = c.geometry.type === 'MultiPolygon' ? c.geometry.coordinates : [c.geometry.coordinates];
                     polys.forEach(poly => {
                         poly.forEach(ring => {
-                            const pts = ring.map(([lng, lat]) => {
-                                const cc = latLngToCoords(lat, lng, GLOBE_R * 1.001);
-                                return new THREE.Vector3(cc.x, cc.y, cc.z);
-                            });
+                            const pts = ringToPoints(ring);
                             const geo = new THREE.BufferGeometry().setFromPoints(pts);
                             const line = new THREE.Line(geo, lineMat);
                             sphere.add(line);
