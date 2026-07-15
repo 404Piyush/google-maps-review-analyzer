@@ -57,8 +57,9 @@ async function initGlobe(container) {
     // ============================================
     const GLOBE_R = 1.4;
     const sphereGeo = new THREE.SphereGeometry(GLOBE_R, 96, 96);
+    // Ocean — deep teal-blue base (the "actual color of earth" on the water side)
     const sphereMat = new THREE.MeshBasicMaterial({
-        color: 0x14151c,
+        color: 0x1f4d6b,
         transparent: false,
     });
     const sphere = new THREE.Mesh(sphereGeo, sphereMat);
@@ -122,48 +123,59 @@ async function initGlobe(container) {
                 if (!topojsonClient) topojsonClient = await import('https://esm.sh/topojson-client@3.1.0');
                 const countries = topojsonClient.feature(topo, topo.objects.countries);
 
-                // Soft fill (semi-transparent ink-tinted)
+                // Landmass fill — build a 3D triangle fan per ring
+                // (vertices on the sphere surface → visible from any angle)
                 const fillMat = new THREE.MeshBasicMaterial({
-                    color: 0x1c1f2a,
-                    transparent: true,
-                    opacity: 0.55,
-                    side: THREE.FrontSide,
+                    color: 0xd9c89a,
+                    transparent: false,
+                    side: THREE.DoubleSide,
                 });
+
+                function buildLandGeometry(ring, R) {
+                    if (!ring || ring.length < 3) return null;
+                    const positions = [];
+                    const indices = [];
+                    for (const [lng, lat] of ring) {
+                        const v = latLngToCoords(lat, lng, R);
+                        positions.push(v.x, v.y, v.z);
+                    }
+                    // Fan triangulate from the first vertex
+                    for (let i = 1; i < ring.length - 1; i++) {
+                        indices.push(0, i, i + 1);
+                    }
+                    const geo = new THREE.BufferGeometry();
+                    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                    geo.setIndex(indices);
+                    geo.computeVertexNormals();
+                    return geo;
+                }
+
                 countries.features.forEach(c => {
                     const polys = c.geometry.type === 'MultiPolygon' ? c.geometry.coordinates : [c.geometry.coordinates];
                     polys.forEach(poly => {
-                        const shape = new THREE.Shape();
-                        poly.forEach((ring, i) => {
-                            ring.forEach(([lng, lat], j) => {
-                                const { x, y } = latLngToXY(lat, lng, GLOBE_R * 0.999);
-                                if (j === 0) shape.moveTo(x, y);
-                                else shape.lineTo(x, y);
-                            });
-                        });
-                        if (shape.getPoints().length > 0) {
-                            try {
-                                const geo = new THREE.ShapeGeometry(shape);
-                                const m = new THREE.Mesh(geo, fillMat);
-                                m.position.z = 0;
-                                sphere.add(m);
-                            } catch (e) { /* ignore malformed polys */ }
+                        // poly[0] is the outer ring; later rings are holes
+                        const outerGeo = buildLandGeometry(poly[0], GLOBE_R * 1.002);
+                        if (outerGeo) {
+                            const m = new THREE.Mesh(outerGeo, fillMat);
+                            sphere.add(m);
                         }
+                        // Holes — skip for now (most countries don't have them in 110m)
                     });
                 });
 
-                // Glow outline (drawn over the fill)
+                // Country border — lines drawn slightly above the fill
                 const lineMat = new THREE.LineBasicMaterial({
-                    color: 0xc5f900,
+                    color: 0x6b5a36,
                     transparent: true,
-                    opacity: 0.35,
+                    opacity: 0.85,
                 });
                 countries.features.forEach(c => {
                     const polys = c.geometry.type === 'MultiPolygon' ? c.geometry.coordinates : [c.geometry.coordinates];
                     polys.forEach(poly => {
                         poly.forEach(ring => {
                             const pts = ring.map(([lng, lat]) => {
-                                const c = latLngToCoords(lat, lng, GLOBE_R * 1.001);
-                                return new THREE.Vector3(c.x, c.y, c.z);
+                                const cc = latLngToCoords(lat, lng, GLOBE_R * 1.001);
+                                return new THREE.Vector3(cc.x, cc.y, cc.z);
                             });
                             const geo = new THREE.BufferGeometry().setFromPoints(pts);
                             const line = new THREE.Line(geo, lineMat);
