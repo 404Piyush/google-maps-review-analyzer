@@ -197,231 +197,239 @@ async function loadShowcase() {
 loadShowcase();
 
 // ============================================
-// 6. Globe story panel — fetches REAL reviews from /api/scrape
+// 6. Globe popup — anchored to active pin, fetches /api/scrape as NDJSON
 // ============================================
-const storyPanel = document.getElementById('storyPanel');
-const storyClose = storyPanel?.querySelector('.story-close');
+const globePopup = document.getElementById('globePopup');
+const popupEmpty = document.getElementById('popupEmpty');
+const popupClose = globePopup?.querySelector('.popup-close');
+const popupCloseEmpty = popupEmpty?.querySelector('.popup-close');
 const urlPasteForm = document.getElementById('urlPasteForm');
 const urlPasteInput = document.getElementById('mapsUrl');
 const urlPasteHint = document.getElementById('urlPasteHint');
 
-let currentPlaceData = null;
+let currentScrape = null; // AbortController for any in-flight scrape
 
-function setPanelState(state) {
-    storyPanel?.querySelector('.story-loading')?.toggleAttribute('hidden', state !== 'loading');
-    storyPanel?.querySelector('.story-error')?.toggleAttribute('hidden', state !== 'error');
-    storyPanel?.querySelector('.story-content')?.style && (storyPanel.querySelector('.story-content').style.display = state === 'content' ? 'block' : (state === 'content' ? '' : 'none'));
-    if (state === 'content') storyPanel.querySelector('.story-content').style.display = 'block';
-    else storyPanel.querySelector('.story-content').style.display = 'none';
+function hideAllPopups() {
+    globePopup && (globePopup.hidden = true);
+    popupEmpty && (popupEmpty.hidden = true);
+    if (window.GlobeAPI) window.GlobeAPI.close();
 }
 
-function showLoading() {
-    storyPanel.classList.add('visible');
-    storyPanel.setAttribute('aria-hidden', 'false');
-    storyPanel.querySelector('.story-loading').hidden = false;
-    storyPanel.querySelector('.story-error').hidden = true;
-    storyPanel.querySelector('.story-content').style.display = 'none';
+function showPopupLoading(place) {
+    if (!globePopup) return;
+    hideAllPopups();
+    globePopup.hidden = false;
+    // Optimistic fill
+    globePopup.querySelector('.popup-name').textContent = place.name || 'Loading…';
+    globePopup.querySelector('.popup-loc').textContent = [place.city, place.country].filter(Boolean).join(', ');
+    globePopup.querySelector('.popup-emoji').textContent = place.emoji || '📍';
+    globePopup.querySelector('.popup-rating').textContent = place.rating ? `★ ${place.rating}` : '';
+    globePopup.querySelector('.popup-reviewcount').textContent = 'Scraping…';
+    globePopup.querySelector('.popup-summary').style.display = 'none';
+    globePopup.querySelector('#popupCta').style.display = 'none';
 }
 
-function showError(title, message, hint) {
-    storyPanel.classList.add('visible');
-    storyPanel.setAttribute('aria-hidden', 'false');
-    storyPanel.querySelector('.story-loading').hidden = true;
-    storyPanel.querySelector('.story-error').hidden = false;
-    storyPanel.querySelector('.story-content').style.display = 'none';
-    storyPanel.querySelector('.story-error-title').textContent = title;
-    storyPanel.querySelector('.story-error-message').textContent = message;
-    storyPanel.querySelector('.story-error-hint').textContent = hint || '';
-
-    // Clear stale reviews so error state isn't polluted by previous content
-    document.getElementById('storyReviews').innerHTML = '';
-    document.getElementById('storyReviewCount').textContent = '0';
-    document.getElementById('storyBarPos').style.width = '0%';
-    document.getElementById('storyBarNeu').style.width = '0%';
-    document.getElementById('storyBarNeg').style.width = '0%';
-    document.getElementById('storyProvenance').textContent = '';
-    document.getElementById('storyNarrative').innerHTML = '';
-}
-
-function showContent() {
-    storyPanel.classList.add('visible');
-    storyPanel.setAttribute('aria-hidden', 'false');
-    storyPanel.querySelector('.story-loading').hidden = true;
-    storyPanel.querySelector('.story-error').hidden = true;
-    storyPanel.querySelector('.story-content').style.display = 'block';
-}
-
-function closeStory() {
-    storyPanel?.classList.remove('visible');
-    storyPanel?.setAttribute('aria-hidden', 'true');
-    currentPlaceData = null;
-}
-
-// ============================================
-// Fetch reviews from /api/scrape
-// ============================================
-async function loadPlace(place) {
-    currentPlaceData = place;
-    showLoading();
-
-    // Pre-fill header with optimistic place data while scraping
-    const fill = place.coords ? {
-        name: place.name,
-        location: `${place.city || ''}, ${place.country || ''}`.replace(/^,\s*|\s*,\s*$/g, ''),
-        emoji: place.emoji || '📍',
-        rating: place.rating ? `★ ${place.rating}` : '',
-        tagline: place.tagline || '',
-    } : { name: place.name || 'Loading…', location: '', emoji: '📍', rating: '', tagline: '' };
-
-    storyPanel.querySelector('.story-name').textContent = fill.name;
-    storyPanel.querySelector('.story-location').textContent = fill.location;
-    storyPanel.querySelector('.story-emoji').textContent = fill.emoji;
-    storyPanel.querySelector('.story-rating').textContent = fill.rating;
-    storyPanel.querySelector('.story-tagline').textContent = fill.tagline;
-
-    try {
-        let url;
-        if (place.id) {
-            url = `/api/scrape?id=${encodeURIComponent(place.id)}`;
-        } else if (place.mapsUrl) {
-            url = `/api/scrape?url=${encodeURIComponent(place.mapsUrl)}`;
-        } else if (place.query) {
-            url = `/api/scrape?query=${encodeURIComponent(place.query)}`;
-        } else {
-            throw new Error('No place id, URL, or query provided');
-        }
-
-        const res = await fetch(url);
-        const data = await res.json();
-
-        if (!res.ok || !data.ok) {
-            const hint = data.hint ? `\n\n${data.hint}` : '';
-            showError(
-                'No cached scrape for this place',
-                data.message || data.error || 'Unknown error',
-                hint
-            );
-            return;
-        }
-
-        renderReviews(data);
-    } catch (err) {
-        showError('Network error', err.message, 'Is the API server running? Try `npm run dev` locally.');
-    }
-}
-
-function renderReviews(data) {
-    const { place, reviews, scraped_at, source } = data;
+function showPopupContent(place, allReviews, scrapedAt) {
+    if (!globePopup) return;
+    hideAllPopups();
+    globePopup.hidden = false;
 
     // Header
-    storyPanel.querySelector('.story-name').textContent = place.name;
-    storyPanel.querySelector('.story-location').textContent = '';
-    storyPanel.querySelector('.story-emoji').textContent = '';
-    storyPanel.querySelector('.story-rating').textContent = place.rating ? `★ ${place.rating}` : '';
-    storyPanel.querySelector('.story-tagline').textContent =
-        `${place.reviews_count_estimate?.toLocaleString() || reviews.length} reviews on Google Maps`;
+    globePopup.querySelector('.popup-name').textContent = place.name || '';
+    globePopup.querySelector('.popup-loc').textContent = [place.city, place.country].filter(Boolean).join(', ');
+    globePopup.querySelector('.popup-emoji').textContent = place.emoji || '📍';
+    globePopup.querySelector('.popup-rating').textContent = place.rating ? `★ ${place.rating}` : '';
 
-    // Sentiment stats
-    const pos = reviews.filter(r => r.stars >= 4).length;
-    const neu = reviews.filter(r => r.stars === 3).length;
-    const neg = reviews.filter(r => r.stars <= 2).length;
-    const total = reviews.length || 1;
-    document.getElementById('storyReviewCount').textContent = reviews.length;
-    document.getElementById('storyBarPos').style.width = `${(pos / total) * 100}%`;
-    document.getElementById('storyBarNeu').style.width = `${(neu / total) * 100}%`;
-    document.getElementById('storyBarNeg').style.width = `${(neg / total) * 100}%`;
+    // Summary
+    const pos = allReviews.filter(r => r.stars >= 4).length;
+    const neu = allReviews.filter(r => r.stars === 3).length;
+    const neg = allReviews.filter(r => r.stars <= 2).length;
+    const total = allReviews.length || 1;
+    globePopup.querySelector('.popup-reviewcount').textContent =
+        `${allReviews.length} of ${place.reviews_count_estimate?.toLocaleString() || allReviews.length} reviews`;
+    const barPos = globePopup.querySelector('.popup-bar-pos');
+    const barNeu = globePopup.querySelector('.popup-bar-neu');
+    const barNeg = globePopup.querySelector('.popup-bar-neg');
+    if (barPos) barPos.style.width = `${(pos / total) * 100}%`;
+    if (barNeu) barNeu.style.width = `${(neu / total) * 100}%`;
+    if (barNeg) barNeg.style.width = `${(neg / total) * 100}%`;
 
-    // Provenance
-    const prov = document.getElementById('storyProvenance');
-    const date = scraped_at ? new Date(scraped_at).toLocaleDateString() : 'unknown';
-    prov.textContent = `Scraped ${date} · source: ${source || 'cache'}`;
+    globePopup.querySelector('.popup-summary').style.display = '';
 
-    // Reviews list
-    const reviewsEl = document.getElementById('storyReviews');
-    reviewsEl.innerHTML = reviews.map(r => `
-        <article class="story-review">
-            <div class="story-review-head">
-                <span class="story-review-author">${escapeHtml(r.author || 'Anonymous')}</span>
-                <span class="story-review-meta">
-                    <span class="story-review-stars">${'★'.repeat(r.stars)}${'☆'.repeat(5 - r.stars)}</span>
-                    <span class="story-review-time">${escapeHtml(r.time || '')}</span>
-                </span>
-            </div>
-            <p class="story-review-text">${escapeHtml(r.text || '')}</p>
-        </article>
-    `).join('');
+    // Link to job page
+    const cta = globePopup.querySelector('#popupCta');
+    if (cta) {
+        cta.href = `/job.html?id=${encodeURIComponent(place.id)}`;
+        cta.style.display = '';
+    }
 
-    // Reset narrative
-    const narrativeEl = document.getElementById('storyNarrative');
-    narrativeEl.innerHTML = '<p class="story-narrative-empty">Click regenerate to get an AI-written summary of these reviews.</p>';
+    // Cache for job page (in case user reloads)
+    try {
+        sessionStorage.setItem(`scraped:${place.id}`, JSON.stringify({
+            place,
+            reviews: allReviews,
+            scraped_at: scrapedAt,
+            source: 'cache',
+        }));
+    } catch {}
+}
 
-    showContent();
+function showPopupEmpty(placeName) {
+    if (!popupEmpty) return;
+    hideAllPopups();
+    popupEmpty.hidden = false;
+    popupEmpty.querySelector('.popup-name').textContent = 'Not yet scraped';
+    popupEmpty.querySelector('.popup-loc').textContent = placeName
+        ? `No cache for “${placeName}”`
+        : 'No cache for this place';
+}
+
+async function loadPlace(place) {
+    if (currentScrape) currentScrape.abort();
+    const ctrl = new AbortController();
+    currentScrape = ctrl;
+
+    showPopupLoading(place);
+
+    const params = place.id ? `?id=${encodeURIComponent(place.id)}`
+                : place.mapsUrl ? `?url=${encodeURIComponent(place.mapsUrl)}`
+                : place.query ? `?query=${encodeURIComponent(place.query)}`
+                : null;
+    if (!params) {
+        showPopupEmpty('unknown');
+        return;
+    }
+
+    try {
+        const res = await fetch(`/api/scrape${params}`, { signal: ctrl.signal });
+        if (!res.ok || !res.body) {
+            showPopupEmpty(place.name);
+            return;
+        }
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let meta = null;
+        let allReviews = [];
+        let scrapedAt = null;
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            let nl;
+            while ((nl = buffer.indexOf('\n')) >= 0) {
+                const line = buffer.slice(0, nl).trim();
+                buffer = buffer.slice(nl + 1);
+                if (!line) continue;
+                let evt;
+                try { evt = JSON.parse(line); } catch { continue; }
+                if (evt.type === 'meta') {
+                    meta = evt;
+                    // Update place meta info from API
+                    if (meta.place) Object.assign(place, meta.place);
+                } else if (evt.type === 'batch') {
+                    allReviews = allReviews.concat(evt.reviews || []);
+                    // Live update the count
+                    const c = globePopup.querySelector('.popup-reviewcount');
+                    if (c) {
+                        const total = evt.total || meta?.total_estimate || allReviews.length;
+                        c.textContent = `Scraped ${evt.scraped || allReviews.length} / ${total} reviews…`;
+                    }
+                    // As soon as we have some data, render the content (the popup already shows place name)
+                    if (allReviews.length >= 1 && !globePopup.classList.contains('visible-data')) {
+                        // No-op — keep showing loading until done
+                    }
+                } else if (evt.type === 'done') {
+                    scrapedAt = evt.scraped_at;
+                } else if (evt.type === 'error') {
+                    showPopupEmpty(meta?.place?.name || place.name || null);
+                    return;
+                }
+            }
+        }
+
+        if (meta && allReviews.length > 0) {
+            const finalPlace = {
+                ...place,
+                name: meta.place?.name || place.name,
+                rating: meta.place?.rating || place.rating,
+                reviews_count_estimate: meta.place?.reviews_count_estimate || allReviews.length,
+            };
+            showPopupContent(finalPlace, allReviews, scrapedAt);
+        } else {
+            showPopupEmpty(place.name);
+        }
+    } catch (err) {
+        if (err.name !== 'AbortError') showPopupEmpty(place.name);
+    }
 }
 
 function escapeHtml(s) {
     return String(s)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 // ============================================
 // Wire up events
 // ============================================
 window.addEventListener('globe:select', (e) => loadPlace(e.detail));
+window.addEventListener('globe:close', () => {
+    if (currentScrape) currentScrape.abort();
+    hideAllPopups();
+});
 
-storyClose?.addEventListener('click', closeStory);
+popupClose?.addEventListener('click', () => {
+    if (currentScrape) currentScrape.abort();
+    hideAllPopups();
+});
+popupCloseEmpty?.addEventListener('click', () => {
+    if (currentScrape) currentScrape.abort();
+    hideAllPopups();
+});
+
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && storyPanel?.classList.contains('visible')) closeStory();
+    if (e.key !== 'Escape') return;
+    if (currentScrape) currentScrape.abort();
+    hideAllPopups();
 });
 
 urlPasteForm?.addEventListener('submit', (e) => {
     e.preventDefault();
     const url = urlPasteInput.value.trim();
     if (!url) return;
-    urlPasteHint.innerHTML = `Resolving <code>${escapeHtml(url.slice(0, 60))}${url.length > 60 ? '…' : ''}</code> and scraping…`;
-    loadPlace({ mapsUrl: url });
+    urlPasteHint.innerHTML = `Resolving <code>${escapeHtml(url.slice(0, 60))}${url.length > 60 ? '…' : ''}</code>…`;
+    // Pass URL to globe — globe will dispatch globe:select with place={id?url?query?}
+    // We need a synthetic place object. Use a meta fetch via api/scrape?url first to resolve.
+    window.dispatchEvent(new CustomEvent('globe:select', { detail: { mapsUrl: url, name: url.slice(0, 40) } }));
 });
 
 // ============================================
-// AI summary via /api/analyze
+// Animate popup position to follow the active pin
 // ============================================
-const analyzeBtn = document.getElementById('storyAnalyzeBtn');
-analyzeBtn?.addEventListener('click', async () => {
-    if (!currentPlaceData) return;
-    const reviews = Array.from(document.querySelectorAll('#storyReviews .story-review-text')).map(el => ({
-        text: el.textContent,
-        stars: 4,
-    }));
-    if (reviews.length === 0) return;
-
-    analyzeBtn.disabled = true;
-    analyzeBtn.textContent = 'Streaming…';
-    const narrativeEl = document.getElementById('storyNarrative');
-    narrativeEl.textContent = '';
-
-    try {
-        const res = await fetch('/api/analyze', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ reviews, model: 'nvidia/nemotron-3-ultra-550b-a55b:free' }),
-        });
-        if (!res.ok) throw new Error(`API ${res.status}`);
-
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        while (true) {
-            const { value, done } = await reader.read();
-            if (done) break;
-            const chunk = decoder.decode(value, { stream: true });
-            narrativeEl.textContent += chunk;
+function syncPopupPosition() {
+    const id = window.GlobeAPI?.getActivePinId?.();
+    if (!id) return requestAnimationFrame(syncPopupPosition);
+    const visiblePopup = (!globePopup.hidden && globePopup) || (!popupEmpty.hidden && popupEmpty);
+    if (!visiblePopup) return requestAnimationFrame(syncPopupPosition);
+    const pos = window.GlobeAPI.getPinScreenPos(id);
+    if (!pos) return requestAnimationFrame(syncPopupPosition);
+    if (!pos.onFront) {
+        visiblePopup.style.opacity = '0';
+    } else {
+        visiblePopup.style.opacity = '1';
+        // Anchor above the pin (popup-tail points down)
+        const containerRect = document.querySelector('#hero3d')?.getBoundingClientRect();
+        if (containerRect) {
+            const x = containerRect.left + pos.x;
+            const y = containerRect.top + pos.y - 18; // 18px above the pin
+            visiblePopup.style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
+        } else {
+            // Fallback to viewport coords
+            visiblePopup.style.transform = `translate(${pos.x}px, ${pos.y}px) translate(-50%, -100%)`;
         }
-    } catch (err) {
-        narrativeEl.textContent = `AI summary failed: ${err.message}`;
-    } finally {
-        analyzeBtn.disabled = false;
-        analyzeBtn.textContent = 'Regenerate';
     }
-});
+    requestAnimationFrame(syncPopupPosition);
+}
+requestAnimationFrame(syncPopupPosition);

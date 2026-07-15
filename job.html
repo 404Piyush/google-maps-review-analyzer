@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="cream">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Review Atlas — Loading report</title>
+    <meta name="description" content="Detailed review breakdown for a Google Maps place.">
+
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%230a0a0a'/%3E%3Ccircle cx='8' cy='8' r='3' fill='%23c5f900'/%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,0..100;1,9..144,300..700,0..100&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="job.css">
+</head>
+<body class="job-page">
+
+<a href="#main" class="skip-link">Skip to content</a>
+
+<div class="cursor-dot" aria-hidden="true"></div>
+<div class="cursor-ring" aria-hidden="true"></div>
+
+<div class="scroll-progress" aria-hidden="true"></div>
+
+<!-- ============ NAV (minimal for job page) ============ -->
+<nav class="job-nav">
+    <a class="job-back magnetic" href="/">
+        <span class="job-back-arrow" aria-hidden="true">←</span>
+        <span>Back to the globe</span>
+    </a>
+    <div class="job-nav-meta">
+        <span class="job-nav-mark">RA</span>
+        <span class="job-nav-word">Review Atlas</span>
+    </div>
+</nav>
+
+<main id="main">
+
+    <!-- ============ LOADING STATE ============ -->
+    <section id="jobLoading" class="job-loading">
+        <div class="job-spinner"></div>
+        <p class="job-loading-text">Loading <span id="jobLoadingPlace">review set</span>…</p>
+    </section>
+
+    <!-- ============ ERROR STATE ============ -->
+    <section id="jobError" class="job-error" hidden>
+        <h1 class="job-error-title">No report for this place yet</h1>
+        <p class="job-error-msg" id="jobErrorMsg">Run the scraper locally to generate a report.</p>
+        <a class="btn btn-primary magnetic" href="/">Back to globe →</a>
+    </section>
+
+    <!-- ============ REPORT ============ -->
+    <article id="jobReport" class="job-report" hidden>
+
+        <!-- HEADER -->
+        <header class="job-header">
+            <div class="job-header-meta">
+                <span class="job-category" id="jobCategory">Restaurant</span>
+                <span class="job-divider">·</span>
+                <span class="job-provenance" id="jobProvenance">Scraped from cache</span>
+            </div>
+            <h1 class="job-name" id="jobName">Café de Flore</h1>
+            <p class="job-loc" id="jobLoc">Paris, France</p>
+            <div class="job-header-stats">
+                <div class="job-stat job-stat-rating">
+                    <span class="job-stat-num" id="jobRating">4.0</span>
+                    <span class="job-stat-label">Google rating</span>
+                </div>
+                <div class="job-stat job-stat-count">
+                    <span class="job-stat-num" id="jobReviewCount">0</span>
+                    <span class="job-stat-label">reviews in this set</span>
+                </div>
+                <div class="job-stat job-stat-sentiment">
+                    <span class="job-stat-num" id="jobPosPercent">0%</span>
+                    <span class="job-stat-label">positive</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- AI SUMMARY -->
+        <section class="job-section job-section-ai" id="jobAiSection">
+            <header class="job-section-head">
+                <span class="job-section-num">01</span>
+                <h2 class="job-section-title">The story behind the reviews</h2>
+                <button class="job-section-action magnetic" id="jobAiBtn" type="button">Regenerate</button>
+            </header>
+            <article class="job-ai-body" id="jobAiBody">
+                <p class="job-ai-empty">Tap regenerate to stream an AI-written summary of these reviews.</p>
+            </article>
+        </section>
+
+        <!-- REVIEWS -->
+        <section class="job-section job-section-reviews">
+            <header class="job-section-head">
+                <span class="job-section-num">02</span>
+                <h2 class="job-section-title">What people actually wrote</h2>
+                <div class="job-filter" id="jobFilter">
+                    <button class="job-filter-chip active" data-filter="all" type="button">All <span class="job-filter-count" id="jobFilterAllCount">0</span></button>
+                    <button class="job-filter-chip" data-filter="5" type="button">5★ <span class="job-filter-count" id="jobFilter5Count">0</span></button>
+                    <button class="job-filter-chip" data-filter="4" type="button">4★ <span class="job-filter-count" id="jobFilter4Count">0</span></button>
+                    <button class="job-filter-chip" data-filter="3" type="button">3★ <span class="job-filter-count" id="jobFilter3Count">0</span></button>
+                    <button class="job-filter-chip" data-filter="2" type="button">2★ <span class="job-filter-count" id="jobFilter2Count">0</span></button>
+                    <button class="job-filter-chip" data-filter="1" type="button">1★ <span class="job-filter-count" id="jobFilter1Count">0</span></button>
+                </div>
+            </header>
+            <div class="job-reviews" id="jobReviews"></div>
+            <button class="job-reviews-more magnetic" id="jobReviewsMore" type="button" hidden>Load more</button>
+        </section>
+
+    </article>
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer class="job-footer">
+    <span>MIT · 2026</span>
+    <span>Built by <a href="https://404piyush.me">Piyush Utkar</a></span>
+</footer>
+
+<script type="module" src="cursor.js"></script>
+<script type="module" src="job.js"></script>
+</body>
+</html>

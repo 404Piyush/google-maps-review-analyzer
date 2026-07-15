@@ -30,6 +30,15 @@ function wrapRes(rawRes) {
     let statusCode = 200;
     const headers = {};
     let ended = false;
+    let headerWritten = false;
+    function ensureHeaders() {
+        if (headerWritten) return;
+        headerWritten = true;
+        rawRes.writeHead(statusCode, {
+            'Content-Type': 'application/x-ndjson; charset=utf-8',
+            ...headers,
+        });
+    }
     return {
         status(code) {
             statusCode = code;
@@ -39,13 +48,18 @@ function wrapRes(rawRes) {
             headers[name] = value;
             return this;
         },
+        write(chunk) {
+            if (ended) return;
+            ensureHeaders();
+            rawRes.write(chunk);
+            return true;
+        },
         json(obj) {
             if (ended) return;
             ended = true;
             const body = JSON.stringify(obj);
             rawRes.writeHead(statusCode, {
                 'Content-Type': 'application/json; charset=utf-8',
-                'Content-Length': Buffer.byteLength(body),
                 ...headers,
             });
             rawRes.end(body);
@@ -62,8 +76,11 @@ function wrapRes(rawRes) {
         end(body) {
             if (ended) return;
             ended = true;
-            rawRes.writeHead(statusCode, headers);
-            rawRes.end(body);
+            if (body) {
+                ensureHeaders();
+                rawRes.write(body);
+            }
+            rawRes.end();
         },
     };
 }

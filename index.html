@@ -95,7 +95,7 @@
                     <input id="mapsUrl" type="url" placeholder="https://maps.app.goo.gl/kHViyJeH1rjHzY2VA" autocomplete="off" spellcheck="false"/>
                     <button type="submit" class="btn btn-primary magnetic">Scrape</button>
                 </div>
-                <p class="url-paste-hint" id="urlPasteHint">Try a click on a pin first. For other URLs, run the local scraper: <code>node index.js --url=…</code></p>
+                <p class="url-paste-hint" id="urlPasteHint">Click any pin on the globe to start, or paste a Maps URL to look up by address.</p>
             </form>
         </div>
         <div class="hero-3d" id="hero3d" data-reveal data-reveal-delay="200">
@@ -484,75 +484,73 @@ output/intermediate-analysis.json</code></pre>
     </div>
 </footer>
 
-<!-- ============ GLOBE TOOLTIP ============ -->
-<div id="globeTooltip" class="globe-tooltip" aria-hidden="true">
-    <span class="tt-name"></span>
-    <span class="tt-loc"></span>
-    <span class="tt-cat"></span>
-</div>
-
-<!-- ============ STORY PANEL ============ -->
-<aside id="storyPanel" class="story-panel" aria-hidden="true">
-    <button class="story-close magnetic" aria-label="Close panel" type="button">×</button>
-
-    <div class="story-loading" hidden>
-        <div class="story-spinner"></div>
-        <p>Scraping reviews…</p>
-    </div>
-
-    <div class="story-error" hidden>
-        <h3 class="story-error-title">Couldn't load reviews</h3>
-        <p class="story-error-message"></p>
-        <pre class="story-error-hint"></pre>
-    </div>
-
-    <div class="story-content">
-        <div class="story-header">
-            <span class="story-emoji" aria-hidden="true"></span>
-            <div class="story-titles">
-                <h2 class="story-name"></h2>
-                <p class="story-location"></p>
+<!-- ============ GLOBE POPUP (anchored to active pin, minimal) ============ -->
+<div id="globePopup" class="globe-popup" hidden>
+    <div class="globe-popup-tail" aria-hidden="true"></div>
+    <div class="globe-popup-card">
+        <header class="popup-head">
+            <span class="popup-emoji" aria-hidden="true"></span>
+            <div class="popup-titles">
+                <h3 class="popup-name"></h3>
+                <p class="popup-loc"></p>
             </div>
-            <span class="story-rating"></span>
+            <button class="popup-close magnetic" aria-label="Close" type="button">×</button>
+        </header>
+
+        <div class="popup-meta" id="popupMeta">
+            <span class="popup-rating"></span>
+            <span class="popup-reviewcount"></span>
         </div>
-        <p class="story-tagline"></p>
 
-        <div class="story-summary">
-            <div class="story-summary-stat">
-                <span class="story-summary-num" id="storyReviewCount">0</span>
-                <span class="story-summary-label">reviews</span>
+        <div class="popup-summary" id="popupSummary">
+            <div class="popup-bar">
+                <div class="popup-bar-pos"></div>
+                <div class="popup-bar-neu"></div>
+                <div class="popup-bar-neg"></div>
             </div>
-            <div class="story-summary-bar">
-                <div class="story-summary-pos" id="storyBarPos"></div>
-                <div class="story-summary-neu" id="storyBarNeu"></div>
-                <div class="story-summary-neg" id="storyBarNeg"></div>
-            </div>
-            <div class="story-summary-legend">
+            <div class="popup-bar-legend">
                 <span><i></i>Pos</span>
                 <span><i></i>Neu</span>
                 <span><i></i>Neg</span>
             </div>
         </div>
 
-        <div class="story-section">
-            <div class="story-section-head">
-                <span class="story-label">All reviews</span>
-                <span class="story-provenance" id="storyProvenance"></span>
-            </div>
-            <div class="story-reviews" id="storyReviews"></div>
-        </div>
-
-        <div class="story-section story-ai">
-            <div class="story-section-head">
-                <span class="story-label story-label-ai">AI summary</span>
-                <button type="button" class="story-analyze-btn magnetic" id="storyAnalyzeBtn">Regenerate</button>
-            </div>
-            <div class="story-narrative" id="storyNarrative">
-                <p class="story-narrative-empty">Click regenerate to get an AI-written summary of these reviews.</p>
-            </div>
-        </div>
+        <a class="popup-cta magnetic" id="popupCta" href="#">
+            Open full report
+            <span class="popup-cta-arrow" aria-hidden="true">→</span>
+        </a>
     </div>
-</aside>
+</div>
+
+<!-- ============ LOADING OVERLAY (for globe pin clicks) ============ -->
+<div id="popupLoading" class="popup-loading" hidden>
+    <div class="popup-loading-card">
+        <div class="popup-spinner"></div>
+        <p>Reading reviews…</p>
+    </div>
+</div>
+
+<!-- ============ EMPTY STATE (no cache for this URL) ============ -->
+<div id="popupEmpty" class="globe-popup popup-empty" hidden>
+    <div class="globe-popup-tail" aria-hidden="true"></div>
+    <div class="globe-popup-card popup-empty-card">
+        <header class="popup-head">
+            <div class="popup-titles">
+                <h3 class="popup-name">Not yet scraped</h3>
+                <p class="popup-loc">Run the local scraper to add this place.</p>
+            </div>
+            <button class="popup-close magnetic" aria-label="Close" type="button">×</button>
+        </header>
+        <p class="popup-empty-text">
+            We couldn't find a cached review set for this URL. Run the scraper locally
+            and the data will appear here once it's published.
+        </p>
+        <a class="popup-cta magnetic" href="https://github.com/404Piyush/google-maps-review-analyzer#readme" target="_blank" rel="noopener">
+            How scraping works
+            <span class="popup-cta-arrow" aria-hidden="true">→</span>
+        </a>
+    </div>
+</div>
 
 <script type="module" src="app.js"></script>
 </body>

@@ -1,6 +1,11 @@
 // ============================================
-// globe.js — Interactive Three.js globe with business pins
-// Click a pin → fetches REAL reviews from /api/scrape
+// globe.js — Interactive Three.js globe with city pins
+// - Acid-green atmosphere rim glow
+// - Country outlines + latitude/longitude grid
+// - Pins have a vertical light beam from the surface
+// - Click pin → anchored popup (managed here), <Esc>/background closes
+// - Drag-to-rotate, scroll-to-zoom, hover scales pin
+// Exposes window.GlobeAPI for app.js (getPinScreenPos, setActivePin).
 // ============================================
 
 const container = document.getElementById('hero3d');
@@ -17,12 +22,11 @@ if (!container) {
 }
 
 async function initGlobe(container) {
-    let THREE, feature;
+    let THREE;
     try {
         THREE = await import('three');
-        ({ feature } = await import('https://esm.sh/topojson-client@3.1.0'));
     } catch (err) {
-        console.error('[globe] failed to load dependencies', err);
+        console.error('[globe] failed to load three.js', err);
         return;
     }
 
@@ -36,8 +40,8 @@ async function initGlobe(container) {
     // SCENE
     // ============================================
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-    camera.position.z = 3.6;
+    const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 1000);
+    camera.position.z = 3.2;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -49,62 +53,64 @@ async function initGlobe(container) {
     if (fallback) fallback.style.display = 'none';
 
     // ============================================
-    // GLOBE
+    // GLOBE — inner sphere
     // ============================================
-    const GLOBE_RADIUS = 1.4;
-    const globeGeometry = new THREE.SphereGeometry(GLOBE_RADIUS, 64, 64);
-    const globeMaterial = new THREE.MeshBasicMaterial({
-        color: 0x0a0a0a,
+    const GLOBE_R = 1.4;
+    const sphereGeo = new THREE.SphereGeometry(GLOBE_R, 96, 96);
+    const sphereMat = new THREE.MeshBasicMaterial({
+        color: 0x14151c,
+        transparent: false,
+    });
+    const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+    scene.add(sphere);
+
+    // ============================================
+    // ATMOSPHERE — fresnel rim glow shader
+    // (acid green on the rim of the sphere)
+    // ============================================
+    const atmosphereGeo = new THREE.SphereGeometry(GLOBE_R * 1.06, 64, 64);
+    const atmosphereMat = new THREE.ShaderMaterial({
+        uniforms: {
+            color: { value: new THREE.Color(0xc5f900) },
+            coefficient: { value: 0.85 },
+            power: { value: 4.0 },
+        },
+        vertexShader: `
+            varying vec3 vNormal;
+            varying vec3 vPosition;
+            void main() {
+                vNormal = normalize(normalMatrix * normal);
+                vPosition = (modelViewMatrix * vec4(position, 1.0)).xyz;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `,
+        fragmentShader: `
+            uniform vec3 color;
+            uniform float coefficient;
+            uniform float power;
+            varying vec3 vNormal;
+            void main() {
+                float intensity = coefficient * pow(1.0 - abs(dot(vNormal, vec3(0.0, 0.0, 1.0))), power);
+                gl_FragColor = vec4(color, 1.0) * intensity;
+            }
+        `,
+        blending: THREE.AdditiveBlending,
         transparent: true,
-        opacity: 0.92,
+        side: THREE.BackSide,
+        depthWrite: false,
     });
-    const globe = new THREE.Mesh(globeGeometry, globeMaterial);
-    scene.add(globe);
-
-    const gridMaterial = new THREE.LineBasicMaterial({ color: 0xc5f900, transparent: true, opacity: 0.08 });
-    for (let i = 0; i <= 12; i++) {
-        const phi = (i / 12) * Math.PI;
-        const radius = GLOBE_RADIUS * 1.001;
-        const points = [];
-        for (let j = 0; j <= 64; j++) {
-            const theta = (j / 64) * Math.PI * 2;
-            points.push(new THREE.Vector3(
-                radius * Math.sin(phi) * Math.cos(theta),
-                radius * Math.cos(phi),
-                radius * Math.sin(phi) * Math.sin(theta)
-            ));
-        }
-        scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), gridMaterial));
-    }
-    for (let i = 0; i < 24; i++) {
-        const theta = (i / 24) * Math.PI * 2;
-        const radius = GLOBE_RADIUS * 1.001;
-        const points = [];
-        for (let j = 0; j <= 64; j++) {
-            const phi = (j / 64) * Math.PI;
-            points.push(new THREE.Vector3(
-                radius * Math.sin(phi) * Math.cos(theta),
-                radius * Math.cos(phi),
-                radius * Math.sin(phi) * Math.sin(theta)
-            ));
-        }
-        scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), gridMaterial));
-    }
-
-    const haloGeo = new THREE.SphereGeometry(GLOBE_RADIUS * 1.08, 32, 32);
-    const haloMat = new THREE.MeshBasicMaterial({
-        color: 0xc5f900, transparent: true, opacity: 0.06, side: THREE.BackSide,
-    });
-    scene.add(new THREE.Mesh(haloGeo, haloMat));
+    const atmosphere = new THREE.Mesh(atmosphereGeo, atmosphereMat);
+    scene.add(atmosphere);
 
     // ============================================
-    // COUNTRY OUTLINES (lazy fetch)
+    // COUNTRY OUTLINES (lazy fetch from world-atlas)
     // ============================================
     (async () => {
         const CDNS = [
             'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json',
             'https://unpkg.com/world-atlas@2/countries-110m.json',
         ];
+        let topojsonClient;
         for (const url of CDNS) {
             try {
                 const controller = new AbortController();
@@ -113,21 +119,57 @@ async function initGlobe(container) {
                 clearTimeout(tid);
                 if (!res.ok) continue;
                 const topo = await res.json();
-                const countries = feature(topo, topo.objects.countries);
-                const mat = new THREE.LineBasicMaterial({ color: 0xc5f900, transparent: true, opacity: 0.35 });
+                if (!topojsonClient) topojsonClient = await import('https://esm.sh/topojson-client@3.1.0');
+                const countries = topojsonClient.feature(topo, topo.objects.countries);
+
+                // Soft fill (semi-transparent ink-tinted)
+                const fillMat = new THREE.MeshBasicMaterial({
+                    color: 0x1c1f2a,
+                    transparent: true,
+                    opacity: 0.55,
+                    side: THREE.FrontSide,
+                });
                 countries.features.forEach(c => {
-                    const draw = (coords) => coords.forEach(ring => {
-                        const pts = [];
-                        for (let i = 0; i < ring.length; i++) {
-                            const [lng, lat] = ring[i];
-                            const v = latLngToVector3(THREE, lat, lng, GLOBE_RADIUS * 1.002);
-                            pts.push(v);
+                    const polys = c.geometry.type === 'MultiPolygon' ? c.geometry.coordinates : [c.geometry.coordinates];
+                    polys.forEach(poly => {
+                        const shape = new THREE.Shape();
+                        poly.forEach((ring, i) => {
+                            ring.forEach(([lng, lat], j) => {
+                                const { x, y } = latLngToXY(lat, lng, GLOBE_R * 0.999);
+                                if (j === 0) shape.moveTo(x, y);
+                                else shape.lineTo(x, y);
+                            });
+                        });
+                        if (shape.getPoints().length > 0) {
+                            try {
+                                const geo = new THREE.ShapeGeometry(shape);
+                                const m = new THREE.Mesh(geo, fillMat);
+                                m.position.z = 0;
+                                sphere.add(m);
+                            } catch (e) { /* ignore malformed polys */ }
                         }
-                        globe.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat));
                     });
-                    const g = c.geometry;
-                    if (g.type === 'Polygon') draw(g.coordinates);
-                    else if (g.type === 'MultiPolygon') g.coordinates.forEach(draw);
+                });
+
+                // Glow outline (drawn over the fill)
+                const lineMat = new THREE.LineBasicMaterial({
+                    color: 0xc5f900,
+                    transparent: true,
+                    opacity: 0.35,
+                });
+                countries.features.forEach(c => {
+                    const polys = c.geometry.type === 'MultiPolygon' ? c.geometry.coordinates : [c.geometry.coordinates];
+                    polys.forEach(poly => {
+                        poly.forEach(ring => {
+                            const pts = ring.map(([lng, lat]) => {
+                                const c = latLngToCoords(lat, lng, GLOBE_R * 1.001);
+                                return new THREE.Vector3(c.x, c.y, c.z);
+                            });
+                            const geo = new THREE.BufferGeometry().setFromPoints(pts);
+                            const line = new THREE.Line(geo, lineMat);
+                            sphere.add(line);
+                        });
+                    });
                 });
                 return;
             } catch (e) { /* try next CDN */ }
@@ -136,27 +178,101 @@ async function initGlobe(container) {
     })();
 
     // ============================================
-    // PINS
+    // LAT/LNG GRID (subtle)
+    // ============================================
+    const gridMat = new THREE.LineBasicMaterial({
+        color: 0xc5f900,
+        transparent: true,
+        opacity: 0.06,
+    });
+    for (let i = 0; i <= 12; i++) {
+        const phi = (i / 12) * Math.PI;
+        const r = GLOBE_R * 1.0005;
+        const pts = [];
+        for (let j = 0; j <= 96; j++) {
+            const t = (j / 96) * Math.PI * 2;
+            pts.push(new THREE.Vector3(
+                r * Math.sin(phi) * Math.cos(t),
+                r * Math.cos(phi),
+                r * Math.sin(phi) * Math.sin(t)
+            ));
+        }
+        scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), gridMat));
+    }
+    for (let i = 0; i < 24; i++) {
+        const t = (i / 24) * Math.PI * 2;
+        const r = GLOBE_R * 1.0005;
+        const pts = [];
+        for (let j = 0; j <= 96; j++) {
+            const phi = (j / 96) * Math.PI;
+            pts.push(new THREE.Vector3(
+                r * Math.sin(phi) * Math.cos(t),
+                r * Math.cos(phi),
+                r * Math.sin(phi) * Math.sin(t)
+            ));
+        }
+        scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), gridMat));
+    }
+
+    // ============================================
+    // PINS (each = dot + halo + vertical beam)
     // ============================================
     const pins = [];
-    PLACES.forEach((place, i) => {
-        const pos = latLngToVector3(THREE, place.coords[0], place.coords[1], GLOBE_RADIUS * 1.005);
-        const dot = new THREE.Mesh(
-            new THREE.SphereGeometry(0.018, 12, 12),
-            new THREE.MeshBasicMaterial({ color: 0xc5f900 })
-        );
-        dot.position.copy(pos);
-        dot.userData = { place, type: 'pin' };
-        globe.add(dot);
-        pins.push(dot);
+    const pinGroup = new THREE.Group();
+    sphere.add(pinGroup);
 
-        const halo = new THREE.Mesh(
-            new THREE.SphereGeometry(0.045, 16, 16),
-            new THREE.MeshBasicMaterial({ color: 0xc5f900, transparent: true, opacity: 0, side: THREE.BackSide })
-        );
-        halo.position.copy(pos);
-        halo.userData = { type: 'halo', basePhase: i * 0.7 };
-        globe.add(halo);
+    PLACES.forEach((place, i) => {
+        const surface = latLngToCoords(place.coords[0], place.coords[1], GLOBE_R * 1.001);
+        const normal = new THREE.Vector3(surface.x, surface.y, surface.z).normalize();
+
+        // Anchor (pivot) at the surface — pin + beam + halo all rotate together
+        const pivot = new THREE.Group();
+        pivot.position.set(surface.x, surface.y, surface.z);
+        pivot.lookAt(0, 0, 0); // points outward (rotate Y faces world +Z is up)
+
+        // Pin dot
+        const dotGeo = new THREE.SphereGeometry(0.018, 16, 16);
+        const dotMat = new THREE.MeshBasicMaterial({ color: 0xc5f900 });
+        const dot = new THREE.Mesh(dotGeo, dotMat);
+        dot.position.set(0, 0, 0);
+        pivot.add(dot);
+
+        // Inner halo (pulses)
+        const haloGeo = new THREE.SphereGeometry(0.04, 16, 16);
+        const haloMat = new THREE.MeshBasicMaterial({
+            color: 0xc5f900,
+            transparent: true,
+            opacity: 0,
+            side: THREE.BackSide,
+        });
+        const halo = new THREE.Mesh(haloGeo, haloMat);
+        halo.position.set(0, 0, 0);
+        pivot.add(halo);
+
+        // Vertical beam (a thin line from surface upward in pivot local space)
+        const beamPts = [
+            new THREE.Vector3(0, 0, 0),
+            new THREE.Vector3(0, 0, 0.18),
+        ];
+        const beamGeo = new THREE.BufferGeometry().setFromPoints(beamPts);
+        const beamMat = new THREE.LineBasicMaterial({
+            color: 0xc5f900,
+            transparent: true,
+            opacity: 0.5,
+        });
+        const beam = new THREE.Line(beamGeo, beamMat);
+        pivot.add(beam);
+
+        // Beam top cap
+        const capGeo = new THREE.SphereGeometry(0.012, 12, 12);
+        const capMat = new THREE.MeshBasicMaterial({ color: 0xc5f900 });
+        const cap = new THREE.Mesh(capGeo, capMat);
+        cap.position.set(0, 0, 0.18);
+        pivot.add(cap);
+
+        pivot.userData = { place, dot, halo, beam, cap, type: 'pin', basePhase: i * 0.7 };
+        pinGroup.add(pivot);
+        pins.push(pivot);
     });
 
     // ============================================
@@ -165,13 +281,13 @@ async function initGlobe(container) {
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     let hoveredPin = null;
-    let activePin = null;
+    let activePinId = null;
     let isDragging = false;
     let dragStart = { x: 0, y: 0 };
     let dragDelta = { x: 0, y: 0 };
-    let zoom = 3.6;
+    let zoom = 3.2;
 
-    renderer.domElement.style.cursor = 'grab';
+    renderer.domElement.style.touchAction = 'none';
 
     renderer.domElement.addEventListener('pointermove', (e) => {
         const rect = renderer.domElement.getBoundingClientRect();
@@ -190,60 +306,92 @@ async function initGlobe(container) {
         isDragging = true;
         dragStart.x = e.clientX;
         dragStart.y = e.clientY;
-        renderer.domElement.style.cursor = 'grabbing';
     });
-    renderer.domElement.addEventListener('pointerup', () => {
-        isDragging = false;
-        renderer.domElement.style.cursor = 'grab';
-    });
+    renderer.domElement.addEventListener('pointerup', () => { isDragging = false; });
     renderer.domElement.addEventListener('pointerleave', () => {
         isDragging = false;
-        if (hoveredPin) { hoveredPin.scale.set(1, 1, 1); hoveredPin = null; }
-        hideTooltip();
+        unhoverPin();
     });
     renderer.domElement.addEventListener('wheel', (e) => {
         e.preventDefault();
-        zoom = Math.max(2.4, Math.min(5.5, zoom + e.deltaY * 0.002));
+        zoom = Math.max(2.2, Math.min(5.5, zoom + e.deltaY * 0.002));
     }, { passive: false });
-
     renderer.domElement.addEventListener('click', (e) => {
         if (Math.abs(dragDelta.x) + Math.abs(dragDelta.y) > 0.05) return;
         raycaster.setFromCamera(mouse, camera);
-        const hits = raycaster.intersectObjects(pins);
+        const hits = raycaster.intersectObjects(pins, true);
         if (hits.length > 0) {
-            const pin = hits[0].object;
-            if (activePin && activePin !== pin) activePin.scale.set(1, 1, 1);
-            activePin = pin;
-            pin.scale.set(1.6, 1.6, 1.6);
-            const place = pin.userData.place;
-            const target = latLngToVector3(THREE, place.coords[0], place.coords[1], GLOBE_RADIUS);
-            targetGlobeRot = computeRotationToFace(target);
-            window.dispatchEvent(new CustomEvent('globe:select', { detail: place }));
+            // Find which pin pivot the hit belongs to
+            let pivot = hits[0].object;
+            while (pivot && !pivot.userData.place) pivot = pivot.parent;
+            if (pivot) {
+                setActivePin(pivot.userData.place.id);
+                window.dispatchEvent(new CustomEvent('globe:select', { detail: pivot.userData.place }));
+            }
+        } else if (activePinId) {
+            // Clicked empty space → close
+            setActivePin(null);
+            window.dispatchEvent(new CustomEvent('globe:close'));
         }
     });
 
-    function hideTooltip() {
-        const tt = document.getElementById('globeTooltip');
-        if (tt) tt.classList.remove('visible');
+    function unhoverPin() {
+        if (hoveredPin && hoveredPin !== pins.find(p => p.userData.place.id === activePinId)) {
+            hoveredPin.userData.dot.scale.set(1, 1, 1);
+            hoveredPin = null;
+        }
     }
 
-    function showTooltip(place, m) {
-        const tt = document.getElementById('globeTooltip');
-        if (!tt) return;
-        tt.querySelector('.tt-name').textContent = place.name;
-        tt.querySelector('.tt-loc').textContent = `${place.city}, ${place.country}`;
-        tt.querySelector('.tt-cat').textContent = place.category;
-        tt.style.transform = `translate(${(m.x * 0.5 + 0.5) * 100}%, ${(-m.y * 0.5 + 0.5) * 100}%)`;
-        tt.classList.add('visible');
+    function setActivePin(id) {
+        pins.forEach(p => {
+            if (p.userData.place.id === id) {
+                p.userData.dot.scale.set(1.6, 1.6, 1.6);
+            } else if (p.userData.place.id !== activePinId) {
+                p.userData.dot.scale.set(1, 1, 1);
+            }
+        });
+        activePinId = id;
     }
 
-    function hoverPin(pin) {
-        if (hoveredPin && hoveredPin !== pin) hoveredPin.scale.set(1, 1, 1);
-        hoveredPin = pin;
-        if (pin !== activePin) pin.scale.set(1.4, 1.4, 1.4);
-        showTooltip(pin.userData.place, mouse);
-        renderer.domElement.style.cursor = 'pointer';
+    // Expose API for app.js
+    const pinScreenPositions = {}; // placeId → {x, y, onFront}
+    function computePinScreenPositions() {
+        pins.forEach(p => {
+            const placeId = p.userData.place.id;
+            const worldPos = new THREE.Vector3();
+            p.getWorldPosition(worldPos);
+            const cameraPos = camera.position;
+            // On front if dot product with view direction is positive (i.e. Z > camera.z after rotation)
+            const projected = worldPos.clone().project(camera);
+            const x = (projected.x * 0.5 + 0.5) * width;
+            const y = (-projected.y * 0.5 + 0.5) * height;
+            // Check if pin is on visible side of globe (z > 0 in screen space means in front)
+            // And not occluded by sphere center (simple check: dot(camera_to_pin, pin_normalized) > 0)
+            const camToPin = new THREE.Vector3().subVectors(worldPos, cameraPos).normalize();
+            const pinNormal = worldPos.clone().normalize();
+            const onFront = camToPin.dot(pinNormal) < 0; // Looking at sphere from outside
+            pinScreenPositions[placeId] = { x, y, onFront, worldPos };
+        });
     }
+
+    window.GlobeAPI = {
+        getPinScreenPos(id) { return pinScreenPositions[id] || null; },
+        setActivePin,
+        getActivePinId() { return activePinId; },
+        get PLACES() { return PLACES; },
+        rotateTo(id) {
+            const place = PLACES.find(p => p.id === id);
+            if (!place) return;
+            const target = latLngToCoords(place.coords[0], place.coords[1], GLOBE_R);
+            // Compute rotation to bring point to camera-facing
+            const normalized = new THREE.Vector3(target.x, target.y, target.z).normalize();
+            targetGlobeRot.x = Math.asin(normalized.y);
+            targetGlobeRot.y = Math.atan2(normalized.z, normalized.x) + Math.PI;
+        },
+        close() {
+            setActivePin(null);
+        },
+    };
 
     // ============================================
     // ANIMATION
@@ -251,53 +399,69 @@ async function initGlobe(container) {
     let targetGlobeRot = { x: 0, y: 0 };
     let currentRot = { x: 0, y: 0 };
 
-    function computeRotationToFace(target) {
-        const normalized = target.clone().normalize();
-        const targetY = Math.asin(normalized.y);
-        const targetX = Math.atan2(normalized.z, normalized.x);
-        return { x: targetY, y: -targetX + Math.PI / 2 };
-    }
-
     function animate(time) {
         const t = time * 0.001;
 
         currentRot.x += (targetGlobeRot.x - currentRot.x) * 0.05;
         currentRot.y += (targetGlobeRot.y - currentRot.y) * 0.05;
 
-        globe.rotation.x = currentRot.x + dragDelta.y;
-        globe.rotation.y = currentRot.y + dragDelta.x;
+        sphere.rotation.x = currentRot.x + dragDelta.y;
+        sphere.rotation.y = currentRot.y + dragDelta.x;
 
-        if (!reduceMotion && !isDragging && !activePin && !hoveredPin) {
-            targetGlobeRot.y += 0.0008;
+        if (!reduceMotion && !isDragging && !activePinId && !hoveredPin) {
+            targetGlobeRot.y += 0.0006;
         }
 
+        // Pin animations
         pins.forEach(p => {
-            if (p.userData.type === 'halo') {
-                const phase = p.userData.basePhase + t * 1.5;
-                const pulse = (Math.sin(phase) + 1) / 2;
-                p.material.opacity = pulse * 0.25;
-                const scale = 1 + pulse * 0.6;
-                p.scale.set(scale, scale, scale);
+            const phase = p.userData.basePhase + t * 1.4;
+            const pulse = (Math.sin(phase) + 1) / 2;
+            p.userData.halo.material.opacity = pulse * 0.28;
+            const haloScale = 1 + pulse * 0.8;
+            p.userData.halo.scale.set(haloScale, haloScale, haloScale);
+            // Beam pulses too
+            p.userData.beam.material.opacity = 0.3 + pulse * 0.3;
+            // Active pin: brighter, steady
+            if (p.userData.place.id === activePinId) {
+                p.userData.beam.material.opacity = 0.8;
+                p.userData.cap.scale.set(1.4, 1.4, 1.4);
+            } else {
+                p.userData.cap.scale.set(1, 1, 1);
             }
         });
 
+        // Hover detection
         if (!isDragging) {
             raycaster.setFromCamera(mouse, camera);
-            const hits = raycaster.intersectObjects(pins);
+            const hits = raycaster.intersectObjects(pins, true);
+            let foundPivot = null;
             if (hits.length > 0) {
-                if (hoveredPin !== hits[0].object) {
-                    if (hoveredPin) hoveredPin.scale.set(1, 1, 1);
-                    hoverPin(hits[0].object);
+                let o = hits[0].object;
+                while (o && !o.userData.place) o = o.parent;
+                if (o) foundPivot = o;
+            }
+            if (foundPivot && foundPivot !== hoveredPin) {
+                unhoverPin();
+                hoveredPin = foundPivot;
+                if (hoveredPin.userData.place.id !== activePinId) {
+                    hoveredPin.userData.dot.scale.set(1.5, 1.5, 1.5);
                 }
-            } else if (hoveredPin) {
-                hoveredPin.scale.set(1, 1, 1);
-                hoveredPin = null;
-                hideTooltip();
-                renderer.domElement.style.cursor = 'grab';
+                renderer.domElement.style.cursor = 'pointer';
+            } else if (!foundPivot && hoveredPin) {
+                unhoverPin();
+                renderer.domElement.style.cursor = isDragging ? 'grabbing' : 'grab';
+            } else if (foundPivot) {
+                renderer.domElement.style.cursor = 'pointer';
+            } else {
+                renderer.domElement.style.cursor = isDragging ? 'grabbing' : 'grab';
             }
         }
 
+        // Camera zoom
         camera.position.z += (zoom - camera.position.z) * 0.1;
+
+        // Compute pin screen positions for app.js
+        computePinScreenPositions();
 
         renderer.render(scene, camera);
         requestAnimationFrame(animate);
@@ -323,17 +487,31 @@ async function initGlobe(container) {
         cancelAnimationFrame(frameId);
         ro.disconnect();
         renderer.dispose();
-        globeGeometry.dispose();
-        globeMaterial.dispose();
+        sphereGeo.dispose();
+        sphereMat.dispose();
+        atmosphereGeo.dispose();
     });
 }
 
-function latLngToVector3(THREE, lat, lng, radius) {
+// ============================================
+// Coordinate helpers
+// ============================================
+function latLngToCoords(lat, lng, r) {
     const phi = (90 - lat) * Math.PI / 180;
     const theta = (lng + 180) * Math.PI / 180;
-    return new THREE.Vector3(
-        -(radius * Math.sin(phi) * Math.cos(theta)),
-        radius * Math.cos(phi),
-        radius * Math.sin(phi) * Math.sin(theta)
-    );
+    return {
+        x: -(r * Math.sin(phi) * Math.cos(theta)),
+        y: r * Math.cos(phi),
+        z: r * Math.sin(phi) * Math.sin(theta),
+    };
+}
+
+function latLngToXY(lat, lng, r) {
+    // For 2D ShapeGeometry overlay (before extrusion to 3D)
+    const phi = (90 - lat) * Math.PI / 180;
+    const theta = (lng + 180) * Math.PI / 180;
+    return {
+        x: -(r * Math.sin(phi) * Math.cos(theta)),
+        y: r * Math.cos(phi),
+    };
 }
