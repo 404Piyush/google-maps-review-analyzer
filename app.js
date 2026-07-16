@@ -411,10 +411,43 @@ document.addEventListener('keydown', (e) => {
 
 urlPasteForm?.addEventListener('submit', (e) => {
     e.preventDefault();
-    const url = urlPasteInput.value.trim();
-    if (!url) return;
-    urlPasteHint.innerHTML = `Resolving <code>${escapeHtml(url.slice(0, 60))}${url.length > 60 ? '…' : ''}</code>…`;
-    loadPlace({ mapsUrl: url, name: url.slice(0, 40) });
+    const raw = urlPasteInput.value.trim();
+    if (!raw) return;
+
+    // Smart-detect input format:
+    //   1. Maps URL (https://…) or maps.app.goo.gl short link  →  ?url=
+    //   2. Slug (cafe-de-flore, etc.)                          →  ?id=
+    //   3. Free text query ("Café de Flore Paris")             →  ?q=
+    //   4. Google Place ID (ChIJ…)                            →  show "needs Places API" hint
+    let endpoint = null;
+    let displayLabel = raw;
+
+    const looksLikeUrl = /^https?:\/\//.test(raw) ||
+        /^(maps\.app\.goo\.gl|goo\.gl)\//.test(raw);
+    const looksLikeSlug = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/i.test(raw);
+    const looksLikePlaceId = /^ChIJ[a-zA-Z0-9_-]{20,}$/.test(raw);
+
+    if (looksLikeUrl) {
+        endpoint = `?url=${encodeURIComponent(raw)}`;
+        displayLabel = `URL → ${raw.slice(0, 50)}${raw.length > 50 ? '…' : ''}`;
+    } else if (looksLikePlaceId) {
+        urlPasteHint.innerHTML = `Google Place IDs aren't cached locally. Run <code>reatlas scrape "${raw}"</code> to fetch + cache this one.`;
+        return;
+    } else if (looksLikeSlug) {
+        endpoint = `?id=${encodeURIComponent(raw.toLowerCase())}`;
+        displayLabel = `slug → ${raw}`;
+    } else {
+        // Free text — treat as a place name search
+        endpoint = `?q=${encodeURIComponent(raw)}`;
+        displayLabel = `searching → ${raw}`;
+    }
+
+    urlPasteHint.innerHTML = `Resolving <code>${escapeHtml(displayLabel)}</code>…`;
+    const detail = {};
+    if (endpoint.startsWith('?url=')) detail.mapsUrl = raw;
+    else if (endpoint.startsWith('?query=')) detail.query = raw;
+    else if (endpoint.startsWith('?id=')) detail.id = raw.toLowerCase();
+    loadPlace(detail);
 });
 
 // ============================================

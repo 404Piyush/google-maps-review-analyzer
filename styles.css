@@ -2194,8 +2194,8 @@ select {
    MapLibre globe — custom markers + popup
    ============================================ */
 
-/* Hero container holds the map canvas */
-.hero-3d { background: #0c1824; }
+/* Hero container holds the canvas (transparent so cream page bg shows through) */
+.hero-3d { background: transparent; }
 
 .hero-3d-fallback {
     position: absolute;

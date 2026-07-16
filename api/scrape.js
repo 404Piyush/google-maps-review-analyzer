@@ -102,7 +102,8 @@ module.exports = async (req, res) => {
 
     const q = req.query || {};
     const mapsUrl = (q.url || '').trim();
-    const textQuery = (q.query || '').trim();
+    // accept both ?query= and a short ?q=
+    const textQuery = (q.query || q.q || '').trim();
     const placeIdHint = (q.id || '').trim();
 
     try {

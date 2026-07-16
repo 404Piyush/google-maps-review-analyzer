@@ -51,68 +51,38 @@ async function initGlobe(container) {
     if (fallback) fallback.style.display = 'none';
 
     // ============================================
-    // EARTH — single texture, applied to a sphere
-    // Texture source: jsdelivr CDN of threejs example assets
+    // EARTH — clean cartoon globe
+    // A solid sphere plus a subtle latitude/longitude graticule
+    // overlay. No photorealistic textures, no topjson complexity,
+    // no fragmentation. Pins are the focal accent.
     // ============================================
     const GLOBE_R = 1.4;
     const sphereGeo = new THREE.SphereGeometry(GLOBE_R, 96, 96);
-    let sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x1f4d6b }); // ocean fallback
-    const sphere = new THREE.Mesh(sphereGeo, sphereMaterial);
+    const sphereMat = new THREE.MeshBasicMaterial({ color: 0x2a6e8f });
+    const sphere = new THREE.Mesh(sphereGeo, sphereMat);
     scene.add(sphere);
 
-    // Try to load the Earth texture (best-effort, ocean-blue fallback if it fails)
-    try {
-        const texLoader = new THREE.TextureLoader();
-        const tex = await new Promise((resolve, reject) => {
-            texLoader.load(
-                'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r158/examples/textures/planets/earth_atmos_2048.jpg',
-                (t) => resolve(t),
-                undefined,
-                (e) => reject(e)
-            );
-            setTimeout(() => reject(new Error('texture load timeout')), 8000);
-        });
-        tex.anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 4);
-        sphere.material = new THREE.MeshBasicMaterial({ map: tex });
-        sphereMaterial.dispose();
-    } catch (e) {
-        console.warn('[globe] earth texture unavailable, using ocean blue', e);
-    }
-
-    // ============================================
-    // ATMOSPHERE — thin fresnel rim for depth
-    // ============================================
-    const atmosphereGeo = new THREE.SphereGeometry(GLOBE_R * 1.04, 64, 64);
-    const atmosphereMat = new THREE.ShaderMaterial({
-        uniforms: {
-            color: { value: new THREE.Color(0xc5f900) },
-            coefficient: { value: 0.85 },
-            power: { value: 4.0 },
-        },
-        vertexShader: `
-            varying vec3 vNormal;
-            void main() {
-                vNormal = normalize(normalMatrix * normal);
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-            }
-        `,
-        fragmentShader: `
-            uniform vec3 color;
-            uniform float coefficient;
-            uniform float power;
-            varying vec3 vNormal;
-            void main() {
-                float intensity = coefficient * pow(1.0 - abs(dot(vNormal, vec3(0.0, 0.0, 1.0))), power);
-                gl_FragColor = vec4(color, 1.0) * intensity;
-            }
-        `,
-        blending: THREE.AdditiveBlending,
+    // Subtle lat/lng graticule — gives the sphere some sense of "earth"
+    // without continents. (Hidden visually behind the editorial palette.)
+    const graticuleMat = new THREE.LineBasicMaterial({
+        color: 0xc5f900,
         transparent: true,
-        side: THREE.BackSide,
-        depthWrite: false,
+        opacity: 0.18,
     });
-    const atmosphere = new THREE.Mesh(atmosphereGeo, atmosphereMat);
-    scene.add(atmosphere);
+    for (let lat = -60; lat <= 60; lat += 30) {
+        const phi = (90 - lat) * Math.PI / 180;
+        const r = GLOBE_R * 1.0008;
+        const pts = [];
+        for (let j = 0; j <= 96; j++) {
+            const t = (j / 96) * Math.PI * 2;
+            pts.push(new THREE.Vector3(
+                -r * Math.sin(phi) * Math.cos(t),
+                r * Math.cos(phi),
+                -r * Math.sin(phi) * Math.sin(t),
+            ));
+        }
+        scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), graticuleMat));
+    }
 
     // ============================================
     // PLACE PINS
@@ -312,7 +282,7 @@ async function initGlobe(container) {
         get PLACES() { return PLACES; },
     };
 
-    window.dispatchEvent(new CustomEvent('globe:ready', { detail: { version: 'three.js + earth texture' } }));
+    window.dispatchEvent(new CustomEvent('globe:ready', { detail: { version: 'three.js + cartoon continents' } }));
 
     // ============================================
     // ANIMATION LOOP
@@ -408,8 +378,5 @@ async function initGlobe(container) {
         renderer.dispose();
         sphereGeo.dispose();
         if (sphere.material) sphere.material.dispose();
-        if (sphere.material && sphere.material.map) sphere.material.map.dispose();
-        atmosphereGeo.dispose();
-        atmosphereMat.dispose();
     });
 }
