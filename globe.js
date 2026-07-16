@@ -1,10 +1,6 @@
 // ============================================
-// globe.js — Three.js Earth + single texture
-// - One image load (CDN-cached) → instant globe
-// - Acid-green pulsing markers, vertical beams
-// - HTML popups anchored to pin screen positions
-// - Popups smoothly track pin as you drag/rotate
-// Exposes window.GlobeAPI for app.js
+// globe.js — Cartoon Earth with hand-drawn continents
+// Rendered via CanvasTexture (procedurally drawn from world-atlas)
 // ============================================
 
 const container = document.getElementById('hero3d');
@@ -31,14 +27,14 @@ async function initGlobe(container) {
     }
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const width = container.clientWidth || 400;
-    const height = container.clientHeight || 400;
+    const width = container.clientWidth || 480;
+    const height = container.clientHeight || 480;
 
     // ============================================
     // SCENE
     // ============================================
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(36, width / height, 0.1, 1000);
     camera.position.z = 3.0;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -51,38 +47,162 @@ async function initGlobe(container) {
     if (fallback) fallback.style.display = 'none';
 
     // ============================================
-    // EARTH — clean cartoon globe
-    // A solid sphere plus a subtle latitude/longitude graticule
-    // overlay. No photorealistic textures, no topjson complexity,
-    // no fragmentation. Pins are the focal accent.
+    // CARTOON EARTH via CanvasTexture
+    // Equirectangular layout: 2:1 aspect (lng -180..180, lat 90..-90)
     // ============================================
+    const TW = 2048, TH = 1024;
+    const canvas = document.createElement('canvas');
+    canvas.width = TW; canvas.height = TH;
+    const ctx = canvas.getContext('2d');
+
+    // Helper: project lng/lat to canvas px
+    const project = (lng, lat) => ({
+        x: ((lng + 180) / 360) * TW,
+        y: ((90 - lat) / 180) * TH,
+    });
+
+    // Base: ocean with vertical gradient (lighter at top, darker at bottom)
+    const oceanGrad = ctx.createLinearGradient(0, 0, 0, TH);
+    oceanGrad.addColorStop(0.00, '#6cb0d8');
+    oceanGrad.addColorStop(0.45, '#4f93bf');
+    oceanGrad.addColorStop(0.85, '#3a7aa5');
+    oceanGrad.addColorStop(1.00, '#2a6e8f');
+    ctx.fillStyle = oceanGrad;
+    ctx.fillRect(0, 0, TW, TH);
+
+    // Subtle wave / horizon band (a lighter strip near the equator for depth)
+    const horizon = ctx.createLinearGradient(0, TH * 0.35, 0, TH * 0.65);
+    horizon.addColorStop(0, 'rgba(255,255,255,0)');
+    horizon.addColorStop(0.5, 'rgba(255,255,255,0.06)');
+    horizon.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = horizon;
+    ctx.fillRect(0, TH * 0.35, TW, TH * 0.30);
+
+    // Continents — load topojson, draw filled polygons with hand-drawn outlines
+    let topo = null;
+    const topoCDNS = [
+        'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json',
+        'https://unpkg.com/world-atlas@2/countries-110m.json',
+    ];
+    let topoClient = null;
+    for (const url of topoCDNS) {
+        try {
+            const ctl = new AbortController();
+            const tid = setTimeout(() => ctl.abort(), 6000);
+            const res = await fetch(url, { signal: ctl.signal });
+            clearTimeout(tid);
+            if (res.ok) { topo = await res.json(); break; }
+        } catch (e) { /* try next */ }
+    }
+
+    if (topo) {
+        try {
+            const topoMod = await import('https://esm.sh/topojson-client@3.1.0');
+            topoClient = topoMod.feature || topoMod.default?.feature;
+        } catch { /* ignore — no continents */ }
+
+        if (topoClient) {
+            const countries = topoClient(topo, topo.objects.countries);
+
+            // Outer waterline (light blue rim around continents)
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            ctx.fillStyle = '#aac9d8'; // light watery halo around continents
+            ctx.lineWidth = 14;
+
+            countries.features.forEach(c => {
+                const polys = c.geometry.type === 'MultiPolygon' ? c.geometry.coordinates : [c.geometry.coordinates];
+                polys.forEach(poly => {
+                    if (poly.length < 1) return;
+                    // Outer halos (light watery edge)
+                    poly.forEach(ring => {
+                        ctx.beginPath();
+                        ring.forEach(([lng, lat], i) => {
+                            const p = project(lng, lat);
+                            if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+                        });
+                        ctx.closePath();
+                        ctx.stroke();
+                    });
+                });
+            });
+
+            // Continent fill — light yellow-green
+            ctx.fillStyle = '#a8c444';
+            countries.features.forEach(c => {
+                const polys = c.geometry.type === 'MultiPolygon' ? c.geometry.coordinates : [c.geometry.coordinates];
+                polys.forEach(poly => {
+                    if (poly.length < 1) return;
+                    const fillOuter = (ring) => {
+                        ctx.beginPath();
+                        ring.forEach(([lng, lat], i) => {
+                            const p = project(lng, lat);
+                            if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+                        });
+                        ctx.closePath();
+                        ctx.fill();
+                    };
+                    fillOuter(poly[0]);
+                    // Cut holes (subsequent rings in same poly)
+                    for (let i = 1; i < poly.length; i++) {
+                        ctx.save();
+                        ctx.globalCompositeOperation = 'destination-out';
+                        fillOuter(poly[i]);
+                        ctx.restore();
+                    }
+                });
+            });
+
+            // Thin black outlines on top of fills for cartoon crispness
+            ctx.strokeStyle = '#0a0a0a';
+            ctx.lineWidth = 2.5;
+            countries.features.forEach(c => {
+                const polys = c.geometry.type === 'MultiPolygon' ? c.geometry.coordinates : [c.geometry.coordinates];
+                polys.forEach(poly => {
+                    poly.forEach(ring => {
+                        ctx.beginPath();
+                        ring.forEach(([lng, lat], i) => {
+                            const p = project(lng, lat);
+                            if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+                        });
+                        ctx.closePath();
+                        ctx.stroke();
+                    });
+                });
+            });
+        }
+    }
+
+    // Subtle graticule (latitude/longitude lines)
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    for (let lng = -180; lng <= 180; lng += 30) {
+        const p = project(lng, 0);
+        ctx.beginPath();
+        ctx.moveTo(p.x, 0);
+        ctx.lineTo(p.x, TH);
+        ctx.stroke();
+    }
+    for (let lat = -60; lat <= 60; lat += 30) {
+        const p = project(0, lat);
+        ctx.beginPath();
+        ctx.moveTo(0, p.y);
+        ctx.lineTo(TW, p.y);
+        ctx.stroke();
+    }
+
+    // Use canvas as texture
+    const earthTex = new THREE.CanvasTexture(canvas);
+    earthTex.colorSpace = THREE.SRGBColorSpace;
+    earthTex.anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 4);
+
     const GLOBE_R = 1.4;
     const sphereGeo = new THREE.SphereGeometry(GLOBE_R, 96, 96);
-    const sphereMat = new THREE.MeshBasicMaterial({ color: 0x2a6e8f });
-    const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+    const sphere = new THREE.Mesh(
+        sphereGeo,
+        new THREE.MeshBasicMaterial({ map: earthTex })
+    );
     scene.add(sphere);
-
-    // Subtle lat/lng graticule — gives the sphere some sense of "earth"
-    // without continents. (Hidden visually behind the editorial palette.)
-    const graticuleMat = new THREE.LineBasicMaterial({
-        color: 0xc5f900,
-        transparent: true,
-        opacity: 0.18,
-    });
-    for (let lat = -60; lat <= 60; lat += 30) {
-        const phi = (90 - lat) * Math.PI / 180;
-        const r = GLOBE_R * 1.0008;
-        const pts = [];
-        for (let j = 0; j <= 96; j++) {
-            const t = (j / 96) * Math.PI * 2;
-            pts.push(new THREE.Vector3(
-                -r * Math.sin(phi) * Math.cos(t),
-                r * Math.cos(phi),
-                -r * Math.sin(phi) * Math.sin(t),
-            ));
-        }
-        scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), graticuleMat));
-    }
 
     // ============================================
     // PLACE PINS
@@ -102,35 +222,27 @@ async function initGlobe(container) {
 
     PLACES.forEach((place, i) => {
         const surface = latLngToCoords(place.coords[0], place.coords[1], GLOBE_R * 1.005);
-
         const pivot = new THREE.Group();
         pivot.position.set(surface.x, surface.y, surface.z);
         pivot.lookAt(0, 0, 0);
 
-        // Dot
         const dot = new THREE.Mesh(
             new THREE.SphereGeometry(0.018, 16, 16),
             new THREE.MeshBasicMaterial({ color: 0xc5f900 })
         );
         pivot.add(dot);
 
-        // Halo (animated)
         const halo = new THREE.Mesh(
             new THREE.SphereGeometry(0.04, 16, 16),
             new THREE.MeshBasicMaterial({ color: 0xc5f900, transparent: true, opacity: 0, side: THREE.BackSide })
         );
         pivot.add(halo);
 
-        // Vertical beam
-        const beamPts = [
-            new THREE.Vector3(0, 0, 0),
-            new THREE.Vector3(0, 0, 0.18),
-        ];
+        const beamPts = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0.18)];
         const beamMat = new THREE.LineBasicMaterial({ color: 0xc5f900, transparent: true, opacity: 0.5 });
         const beam = new THREE.Line(new THREE.BufferGeometry().setFromPoints(beamPts), beamMat);
         pivot.add(beam);
 
-        // Beam cap
         const cap = new THREE.Mesh(
             new THREE.SphereGeometry(0.012, 12, 12),
             new THREE.MeshBasicMaterial({ color: 0xc5f900 })
@@ -194,19 +306,7 @@ async function initGlobe(container) {
         zoom = Math.max(2.0, Math.min(5.5, zoom + e.deltaY * 0.002));
     }, { passive: false });
 
-    function setActivePin(id) {
-        pins.forEach(p => {
-            if (p.userData.place.id === id) {
-                p.userData.dot.scale.set(1.6, 1.6, 1.6);
-            } else if (p.userData.place.id !== activePinId) {
-                p.userData.dot.scale.set(1, 1, 1);
-            }
-        });
-        activePinId = id;
-    }
-
-    // Run before the main click handler: if this click is on a marker
-    // that was just closed, swallow it so the close actually sticks.
+    // Capture-phase click guard: swallow the click if it hits a recently-closed marker
     const suppressJustClosedClick = (e) => {
         raycaster.setFromCamera(mouse, camera);
         const hits = raycaster.intersectObjects(pins, true);
@@ -230,8 +330,7 @@ async function initGlobe(container) {
             while (pivot && !pivot.userData.place) pivot = pivot.parent;
             if (pivot) {
                 setActivePin(pivot.userData.place.id);
-                const biz = pivot.userData.place;
-                window.dispatchEvent(new CustomEvent('globe:select', { detail: biz }));
+                window.dispatchEvent(new CustomEvent('globe:select', { detail: pivot.userData.place }));
             }
         } else if (activePinId) {
             setActivePin(null);
@@ -239,8 +338,19 @@ async function initGlobe(container) {
         }
     });
 
+    function setActivePin(id) {
+        pins.forEach(p => {
+            if (p.userData.place.id === id) {
+                p.userData.dot.scale.set(1.6, 1.6, 1.6);
+            } else if (p.userData.place.id !== activePinId) {
+                p.userData.dot.scale.set(1, 1, 1);
+            }
+        });
+        activePinId = id;
+    }
+
     // ============================================
-    // PUBLIC API — exposes pin positions for HTML popups
+    // PUBLIC API
     // ============================================
     const pinScreenPositions = {};
     function computePinScreenPositions() {
@@ -282,7 +392,7 @@ async function initGlobe(container) {
         get PLACES() { return PLACES; },
     };
 
-    window.dispatchEvent(new CustomEvent('globe:ready', { detail: { version: 'three.js + cartoon continents' } }));
+    window.dispatchEvent(new CustomEvent('globe:ready', { detail: { version: 'three.js + canvas-texture cartoon earth' } }));
 
     // ============================================
     // ANIMATION LOOP
@@ -303,7 +413,6 @@ async function initGlobe(container) {
             targetGlobeRot.y += 0.0006;
         }
 
-        // Pin animations
         pins.forEach(p => {
             const phase = p.userData.basePhase + t * 1.4;
             const pulse = (Math.sin(phase) + 1) / 2;
@@ -319,7 +428,6 @@ async function initGlobe(container) {
             }
         });
 
-        // Hover detection
         if (!isDragging) {
             raycaster.setFromCamera(mouse, camera);
             const hits = raycaster.intersectObjects(pins, true);
@@ -358,8 +466,8 @@ async function initGlobe(container) {
     let frameId = requestAnimationFrame(animate);
 
     function resize() {
-        const w = container.clientWidth || 400;
-        const h = container.clientHeight || 400;
+        const w = container.clientWidth || 480;
+        const h = container.clientHeight || 480;
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
         renderer.setSize(w, h);

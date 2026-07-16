@@ -450,6 +450,20 @@ urlPasteForm?.addEventListener('submit', (e) => {
     loadPlace(detail);
 });
 
+// Quick-pick demo chips → fire loadPlace with the chip's known slug
+document.querySelectorAll('.chip[data-place-id]').forEach(chip => {
+    chip.addEventListener('click', (e) => {
+        e.preventDefault();
+        const placeId = chip.dataset.placeId;
+        urlPasteHint.innerHTML = `Loading <code>${escapeHtml(chip.textContent.trim())}</code>…`;
+        // Rotate globe to the place
+        if (window.GlobeAPI?.rotateTo) window.GlobeAPI.rotateTo(placeId);
+        loadPlace({ id: placeId, name: chip.textContent.trim() });
+        // Scroll the globe into view
+        document.getElementById('try')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+});
+
 // ============================================
 // Sync popup position to the active pin
 // ============================================
