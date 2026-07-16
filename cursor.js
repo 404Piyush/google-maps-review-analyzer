@@ -1,5 +1,7 @@
 // ============================================
 // cursor.js — Custom cursor + magnetic buttons
+// Uses event delegation so dynamically inserted elements
+// (like MapLibre / Three.js popups) get the cursor treatment too.
 // ============================================
 const dot = document.querySelector('.cursor-dot');
 const ring = document.querySelector('.cursor-ring');
@@ -18,10 +20,8 @@ if (!isCoarse && !reduceMotion && dot && ring) {
     });
 
     function loop() {
-        // Dot follows tightly
         dotX += (mouseX - dotX) * 0.6;
         dotY += (mouseY - dotY) * 0.6;
-        // Ring follows with more lag
         ringX += (mouseX - ringX) * 0.18;
         ringY += (mouseY - ringY) * 0.18;
 
@@ -32,26 +32,47 @@ if (!isCoarse && !reduceMotion && dot && ring) {
     }
     loop();
 
-    // Hover state for interactive elements
-    const interactiveSelector = 'a, button, .tab, summary, input, textarea, select, [role="button"]';
-    document.querySelectorAll(interactiveSelector).forEach((el) => {
-        el.addEventListener('mouseenter', () => document.body.classList.add('is-hovering'));
-        el.addEventListener('mouseleave', () => document.body.classList.remove('is-hovering'));
+    // Event delegation: any current or future interactive element
+    // (a, button, tab, input, textarea, select, [role=button], .magnetic)
+    // toggles body.is-hovering on mouseenter/leave.
+    const INTERACTIVE = 'a, button, .tab, summary, input, textarea, select, [role="button"], .reatlas-popup-close';
+    const MAGNETIC = '.magnetic';
+
+    document.body.addEventListener('mouseover', (e) => {
+        const t = e.target;
+        if (t && t.matches && (t.matches(INTERACTIVE) || t.closest && t.closest(INTERACTIVE))) {
+            document.body.classList.add('is-hovering');
+        }
+    });
+    document.body.addEventListener('mouseout', (e) => {
+        const t = e.target;
+        // Only remove if the related target is NOT a new interactive
+        const newT = e.relatedTarget;
+        if (newT && newT.matches && (newT.matches(INTERACTIVE) || newT.closest && newT.closest(INTERACTIVE))) {
+            return;
+        }
+        document.body.classList.remove('is-hovering');
     });
 
-    // Magnetic buttons
-    document.querySelectorAll('.magnetic').forEach((btn) => {
-        btn.addEventListener('mousemove', (e) => {
+    // Magnetic buttons — also via delegation
+    document.body.addEventListener('mousemove', (e) => {
+        const t = e.target;
+        if (!t || !t.closest) return;
+        const btn = t.closest(MAGNETIC);
+        if (btn) {
             const rect = btn.getBoundingClientRect();
             const x = e.clientX - rect.left - rect.width / 2;
             const y = e.clientY - rect.top - rect.height / 2;
             btn.style.transform = `translate(${x * 0.25}px, ${y * 0.25}px)`;
             document.body.classList.add('is-magnetic');
-        });
-        btn.addEventListener('mouseleave', () => {
-            btn.style.transform = '';
-            document.body.classList.remove('is-magnetic');
-        });
+        } else if (document.body.classList.contains('is-magnetic')) {
+            // Mouse left a magnetic button — find previous magnetic and reset
+            const prev = document.querySelector('.magnetic[style*="translate"]');
+            if (prev) {
+                prev.style.transform = '';
+                document.body.classList.remove('is-magnetic');
+            }
+        }
     });
 
     // Hide on tab leave

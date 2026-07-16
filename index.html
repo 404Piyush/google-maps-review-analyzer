@@ -12,13 +12,10 @@
 
     <link rel="stylesheet" href="styles.css">
 
-    <!-- MapLibre GL for the globe -->
-    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.15.0/dist/maplibre-gl.css">
-
     <script type="importmap">
     {
         "imports": {
-            "maplibre-gl": "https://esm.sh/maplibre-gl@5.15.0",
+            "three": "https://esm.sh/three@0.158.0",
             "d3": "https://esm.sh/d3@7.9.0",
             "d3-cloud": "https://esm.sh/d3-cloud@1.2.9",
             "marked": "https://esm.sh/marked@12.0.2"
@@ -100,20 +97,7 @@
                 <p class="url-paste-hint" id="urlPasteHint">Click any pin on the globe to start, or paste a Maps URL to look up by address.</p>
             </form>
         </div>
-        <div class="hero-3d" id="hero3d" data-reveal data-reveal-delay="200">
-            <div class="hero-3d-fallback">
-                <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <defs>
-                        <radialGradient id="g1" cx="50%" cy="50%">
-                            <stop offset="0%" stop-color="#1f4d6b" stop-opacity="0.5"/>
-                            <stop offset="100%" stop-color="#1f4d6b" stop-opacity="0"/>
-                        </radialGradient>
-                    </defs>
-                    <circle cx="200" cy="200" r="180" fill="url(#g1)"/>
-                    <text x="200" y="200" text-anchor="middle" fill="#c0caf5" font-family="sans-serif" font-size="13" dy="4">loading the world…</text>
-                </svg>
-            </div>
-        </div>
+        <div class="hero-3d" id="hero3d" data-reveal data-reveal-delay="200"></div>
     </div>
 </header>
 

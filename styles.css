@@ -1593,7 +1593,7 @@ select {
     border-radius: 50%;
     font-size: 22px;
     line-height: 1;
-    cursor: pointer;
+    /* cursor: pointer; */
     color: var(--ink);
     z-index: 5;
     transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
@@ -1907,7 +1907,7 @@ select {
     font-size: 11px;
     padding: 4px 10px;
     border-radius: 999px;
-    cursor: pointer;
+    /* cursor: pointer; */
     font-family: var(--font-body);
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -2039,7 +2039,7 @@ select {
     height: 28px;
     font-size: 18px;
     line-height: 1;
-    cursor: pointer;
+    /* cursor: pointer; */
     color: var(--ink);
     flex-shrink: 0;
     transition: background 0.18s, color 0.18s;
@@ -2207,72 +2207,28 @@ select {
     pointer-events: none;
 }
 
-/* MapLibre canvas fills container */
-.hero-3d .maplibregl-canvas-container { cursor: grab; }
-.hero-3d .maplibregl-canvas-container:active { cursor: grabbing; }
-.hero-3d .maplibregl-ctrl-attrib,
-.hero-3d .maplibregl-ctrl-bottom-right { display: none; }
+/* Three.js canvas fills container */
+.hero-3d canvas { display: block; cursor: grab; }
+.hero-3d canvas:active { cursor: grabbing; }
 
 /* ============================================
-   Acid-green pulsing marker (custom DOM marker)
+   Popup styling — Three.js-aware, positioned via JS transform
    ============================================ */
-.reatlas-marker {
-    width: 28px;
-    height: 28px;
-    position: relative;
-    cursor: pointer;
-    transform-origin: center center;
-    transition: transform 0.18s ease;
+.reatlas-popup-wrap {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 320px;
+    pointer-events: none;
+    z-index: 150;
+    transition: opacity 0.2s ease;
+    will-change: transform, opacity;
 }
-.reatlas-marker:hover { transform: scale(1.15); }
-.reatlas-marker.is-hover .reatlas-marker-dot {
-    box-shadow: 0 0 0 3px rgba(197, 249, 0, 0.35), 0 2px 6px rgba(0,0,0,0.4);
+.reatlas-popup-wrap > .reatlas-popup {
+    pointer-events: auto;
 }
-
-.reatlas-marker-dot {
-    position: absolute;
-    inset: 50% auto auto 50%;
-    width: 14px;
-    height: 14px;
-    margin: -7px 0 0 -7px;
-    background: var(--accent);
-    border-radius: 50%;
-    box-shadow: 0 0 0 2px rgba(12, 24, 36, 0.5), 0 2px 6px rgba(0,0,0,0.4);
-    transition: box-shadow 0.18s ease;
-    z-index: 2;
-}
-
-.reatlas-marker-ring {
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    border: 2px solid var(--accent);
-    opacity: 0;
-    animation: reatlas-marker-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
-}
-
-@keyframes reatlas-marker-ping {
-    0%   { transform: scale(0.6); opacity: 0.8; }
-    80%  { transform: scale(2.0); opacity: 0; }
-    100% { transform: scale(2.0); opacity: 0; }
-}
-
-/* ============================================
-   Popup styling — MapLibre-native, anchored to marker
-   ============================================ */
-.reatlas-popup-wrap .maplibregl-popup-content {
-    padding: 0;
-    background: transparent;
-    box-shadow: none;
-    border-radius: 0;
-    overflow: visible;
-}
-.reatlas-popup-wrap .maplibregl-popup-tip {
-    border-top-color: var(--cream);
-    border-bottom-color: var(--cream);
-}
-.reatlas-popup-wrap .maplibregl-popup-close-button {
-    display: none;
+.reatlas-popup-wrap .reatlas-popup-close {
+    pointer-events: auto;
 }
 
 .reatlas-popup {
@@ -2336,7 +2292,7 @@ select {
     height: 26px;
     font-size: 17px;
     line-height: 1;
-    cursor: pointer;
+    /* cursor: pointer; */
     color: var(--ink);
     flex-shrink: 0;
     transition: background 0.18s, color 0.18s;
@@ -2445,4 +2401,18 @@ select {
     color: var(--ink-soft);
     line-height: 1.5;
     margin: 0 0 14px;
+}
+
+/* Popup tail (arrow pointing down to the pin) */
+.reatlas-popup-tail {
+    position: absolute;
+    bottom: -7px;
+    left: 50%;
+    transform: translateX(-50%) rotate(45deg);
+    width: 14px;
+    height: 14px;
+    background: var(--cream);
+    border-right: 1.5px solid var(--ink);
+    border-bottom: 1.5px solid var(--ink);
+    z-index: -1;
 }
