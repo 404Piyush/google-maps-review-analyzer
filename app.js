@@ -113,27 +113,28 @@ updateProgress();
 
 // ============================================
 // 5. Showcase: pre-baked viz
+// sample-reviews.json is the LLM analysis output:
+//   { sentiment: {positive, negative, neutral}, topics: [{topic, positive, negative, neutral}], reviews: [...] }
 // ============================================
 async function loadShowcase() {
     try {
-        const [reviewsRes, reportRes] = await Promise.all([
+        const [vizRes, reportRes] = await Promise.all([
             fetch('sample-reviews.json'),
             fetch('sample-report.md'),
         ]);
 
-        if (!reviewsRes.ok || !reportRes.ok) return;
+        if (!vizRes.ok || !reportRes.ok) return;
 
-        const reviews = await reviewsRes.json();
+        const viz = await vizRes.json();
         const reportMd = await reportRes.text();
 
-        // Sentiment counts
-        const sentiments = reviews.map((r) => {
-            const s = r.stars >= 4 ? 'positive' : r.stars <= 2 ? 'negative' : 'neutral';
-            return s;
-        });
-        const pos = sentiments.filter((s) => s === 'positive').length;
-        const neu = sentiments.filter((s) => s === 'neutral').length;
-        const neg = sentiments.filter((s) => s === 'negative').length;
+        const reviews = Array.isArray(viz.reviews) ? viz.reviews : [];
+        const sentiment = viz.sentiment || {};
+        const topicsList = Array.isArray(viz.topics) ? viz.topics : [];
+
+        const pos = sentiment.positive || 0;
+        const neu = sentiment.neutral || 0;
+        const neg = sentiment.negative || 0;
 
         const donutData = [
             { label: 'Positive', value: pos, color: '#c5f900' },
@@ -142,9 +143,11 @@ async function loadShowcase() {
         ];
 
         const donutEl = document.getElementById('showcaseDonut');
-        if (donutEl) renderDonut(donutEl, donutData, { centerLabel: reviews.length, centerSubLabel: 'reviews' });
+        if (donutEl) renderDonut(donutEl, donutData, {
+            centerLabel: pos + neu + neg,
+            centerSubLabel: 'reviews',
+        });
 
-        // Update legend numbers
         const showPos = document.getElementById('showPos');
         const showNeu = document.getElementById('showNeu');
         const showNeg = document.getElementById('showNeg');
@@ -152,40 +155,24 @@ async function loadShowcase() {
         if (showNeu) showNeu.textContent = neu;
         if (showNeg) showNeg.textContent = neg;
 
-        // Topic cloud (extract from reviews)
-        const counts = new Map();
-        const STOPWORDS = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'is', 'was', 'were', 'are', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'to', 'of', 'in', 'for', 'on', 'with', 'at', 'by', 'from', 'as', 'it', 'its', 'this', 'that', 'i', 'we', 'you', 'they', 'was', 'were', 'our', 'my', 'your', 'their']);
-        reviews.forEach((r) => {
-            const text = (r.text || '').toLowerCase();
-            const words = text.match(/\b[a-z]{4,}\b/g) || [];
-            const seen = new Set();
-            for (const w of words) {
-                if (STOPWORDS.has(w) || seen.has(w)) continue;
-                seen.add(w);
-                counts.set(w, (counts.get(w) || 0) + 1);
-            }
-        });
-        const topics = [...counts.entries()]
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 18)
-            .map(([text, value]) => {
-                // Determine sentiment by neighbor context
-                const containingReviews = reviews.filter((r) => (r.text || '').toLowerCase().includes(text));
-                const avgStars = containingReviews.reduce((sum, r) => sum + (Number(r.stars) || 0), 0) / containingReviews.length;
-                const sentiment = avgStars >= 4 ? 'positive' : avgStars <= 2 ? 'negative' : 'neutral';
-                return { text, value, sentiment };
-            });
+        // Topic cloud — use the topics from the analysis output
+        const topicWords = topicsList
+            .map((t) => {
+                const total = (t.positive || 0) + (t.negative || 0) + (t.neutral || 0);
+                if (!total) return null;
+                const sentiment = (t.positive || 0) >= (t.negative || 0) ? 'positive' : 'negative';
+                return { text: t.topic, value: total, sentiment };
+            })
+            .filter(Boolean);
 
         const cloudEl = document.getElementById('showcaseCloud');
-        if (cloudEl) await renderWordCloud(cloudEl, topics);
+        if (cloudEl && topicWords.length) await renderWordCloud(cloudEl, topicWords);
 
-        // Render report
         const reportEl = document.getElementById('showReport');
         if (reportEl) reportEl.innerHTML = marked.parse(reportMd, { breaks: true, gfm: true });
 
-        // Show preview
         const previewEl = document.getElementById('reviewsPreview');
-        if (previewEl) {
+        if (previewEl && reviews.length) {
             previewEl.textContent = JSON.stringify(reviews.slice(0, 5), null, 2) +
                 `\n\n... ${reviews.length - 5} more reviews`;
         }
@@ -277,12 +264,29 @@ function bindPopupClose(popup) {
     setTimeout(() => {
         const el = popup.getElement();
         if (!el) return;
+        // Read place id from the popup's data attribute so we can tell
+        // globe.js to suppress the next "click bubbles back to marker" event.
+        const article = el.querySelector('.reatlas-popup');
+        const placeId = article?.dataset?.placeId;
         el.querySelectorAll('.reatlas-popup-close').forEach(btn => {
             btn.onclick = (e) => {
                 e.stopPropagation();
+                e.preventDefault();
+                if (placeId && window.GlobeAPI?.markClosing) {
+                    window.GlobeAPI.markClosing(placeId);
+                }
                 popup.remove();
                 if (currentScrape) currentScrape.abort();
             };
+        });
+        el.addEventListener('contextmenu', (e) => {
+            // right-click also closes
+            e.preventDefault();
+            if (placeId && window.GlobeAPI?.markClosing) {
+                window.GlobeAPI.markClosing(placeId);
+            }
+            popup.remove();
+            if (currentScrape) currentScrape.abort();
         });
     }, 50);
 }

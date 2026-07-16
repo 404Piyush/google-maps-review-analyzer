@@ -213,6 +213,10 @@ async function initGlobe(container) {
     // ============================================
     const markersById = {};
     const popupsById = {};
+    // Marker ids that should ignore the next click (used so a click
+    // event triggered while the popup is being closed doesn't
+    // immediately re-open the same popup).
+    const justClosedMarkers = new Set();
 
     // Our globe-data stores [lat, lng] (human reading order).
     // MapLibre setLngLat wants [lng, lat] (GeoJSON order). Swap before passing.
@@ -239,6 +243,21 @@ async function initGlobe(container) {
         // Wire up marker click → dispatch globe:select so app.js can stream reviews
         el.addEventListener('click', (e) => {
             e.stopPropagation();
+            e.preventDefault();
+
+            // If app.js just closed our popup, ignore this click
+            // (the closing event occasionally triggers the marker's handler
+            // via MapLibre's internal pointer routing)
+            if (justClosedMarkers.has(place.id)) {
+                justClosedMarkers.delete(place.id);
+                return;
+            }
+
+            // Close any popup currently shown for this place
+            // (avoid stacking if user double-clicks)
+            const existing = popupsById[place.id];
+            if (existing && existing.isOpen()) existing.remove();
+
             // Smoothly fly to the place
             map.flyTo({
                 center: toLngLat(place),
@@ -247,14 +266,8 @@ async function initGlobe(container) {
                 essential: true,
             });
 
-            // Open the popup with loading state
-            popup
-                .setLngLat(toLngLat(place))
-                .setHTML(makeEmptyPopup(place))
-                .addTo(map);
-
-            // Notify app.js
-            window.dispatchEvent(new CustomEvent('globe:select', { detail: { ...place, popup, marker } }));
+            // Notify app.js — it owns the popup lifecycle
+            window.dispatchEvent(new CustomEvent('globe:select', { detail: { ...place, marker } }));
         });
 
         // Hover styling on marker
@@ -291,6 +304,13 @@ async function initGlobe(container) {
     window.GlobeAPI = {
         getActivePinId() { return activeId; },
         getPinScreenPos(_id) { return null; },
+        markClosing(placeId) {
+            if (!placeId) return;
+            justClosedMarkers.add(placeId);
+            // Drop the flag after 350ms — clicks after that are
+            // legitimate new interactions.
+            setTimeout(() => justClosedMarkers.delete(placeId), 350);
+        },
         rotateTo(id) {
             const place = PLACES.find(p => p.id === id);
             if (place) map.flyTo({ center: toLngLat(place), zoom: 3.5, duration: 1200 });
