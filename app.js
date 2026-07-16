@@ -197,115 +197,144 @@ async function loadShowcase() {
 loadShowcase();
 
 // ============================================
-// 6. Globe popup — anchored to active pin, fetches /api/scrape as NDJSON
+// 6. Globe popup — driven by MapLibre via window.GlobeAPI
 // ============================================
-const globePopup = document.getElementById('globePopup');
-const popupEmpty = document.getElementById('popupEmpty');
-const popupClose = globePopup?.querySelector('.popup-close');
-const popupCloseEmpty = popupEmpty?.querySelector('.popup-close');
 const urlPasteForm = document.getElementById('urlPasteForm');
 const urlPasteInput = document.getElementById('mapsUrl');
 const urlPasteHint = document.getElementById('urlPasteHint');
 
 let currentScrape = null; // AbortController for any in-flight scrape
 
-function hideAllPopups() {
-    globePopup && (globePopup.hidden = true);
-    popupEmpty && (popupEmpty.hidden = true);
-    if (window.GlobeAPI) window.GlobeAPI.close();
+function escapeHtml(s) {
+    return String(s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-function showPopupLoading(place) {
-    if (!globePopup) return;
-    hideAllPopups();
-    globePopup.hidden = false;
-    // Optimistic fill
-    globePopup.querySelector('.popup-name').textContent = place.name || 'Loading…';
-    globePopup.querySelector('.popup-loc').textContent = [place.city, place.country].filter(Boolean).join(', ');
-    globePopup.querySelector('.popup-emoji').textContent = place.emoji || '📍';
-    globePopup.querySelector('.popup-rating').textContent = place.rating ? `★ ${place.rating}` : '';
-    globePopup.querySelector('.popup-reviewcount').textContent = 'Scraping…';
-    globePopup.querySelector('.popup-summary').style.display = 'none';
-    globePopup.querySelector('#popupCta').style.display = 'none';
+// Build the popup HTML for an in-progress scrape (count visible)
+function loadingPopupHTML(place, currentCount, total) {
+    return `
+        <article class="reatlas-popup" data-place-id="${escapeHtml(place.id || '')}">
+            <header class="reatlas-popup-head">
+                <span class="reatlas-popup-emoji" aria-hidden="true">${place.emoji || '📍'}</span>
+                <div>
+                    <h3 class="reatlas-popup-name">${escapeHtml(place.name)}</h3>
+                    <p class="reatlas-popup-loc">${escapeHtml([place.city, place.country].filter(Boolean).join(', '))}</p>
+                </div>
+                <button class="reatlas-popup-close" type="button" aria-label="Close">×</button>
+            </header>
+            <div class="reatlas-popup-loading">
+                <div class="reatlas-popup-spinner"></div>
+                <span>Scraped ${currentCount || 0} / ${total || '?'}…</span>
+            </div>
+        </article>
+    `;
 }
 
-function showPopupContent(place, allReviews, scrapedAt) {
-    if (!globePopup) return;
-    hideAllPopups();
-    globePopup.hidden = false;
-
-    // Header
-    globePopup.querySelector('.popup-name').textContent = place.name || '';
-    globePopup.querySelector('.popup-loc').textContent = [place.city, place.country].filter(Boolean).join(', ');
-    globePopup.querySelector('.popup-emoji').textContent = place.emoji || '📍';
-    globePopup.querySelector('.popup-rating').textContent = place.rating ? `★ ${place.rating}` : '';
-
-    // Summary
+// Build the popup HTML for the final result
+function contentPopupHTML(place, allReviews, scrapedAt) {
     const pos = allReviews.filter(r => r.stars >= 4).length;
     const neu = allReviews.filter(r => r.stars === 3).length;
     const neg = allReviews.filter(r => r.stars <= 2).length;
     const total = allReviews.length || 1;
-    globePopup.querySelector('.popup-reviewcount').textContent =
-        `${allReviews.length} of ${place.reviews_count_estimate?.toLocaleString() || allReviews.length} reviews`;
-    const barPos = globePopup.querySelector('.popup-bar-pos');
-    const barNeu = globePopup.querySelector('.popup-bar-neu');
-    const barNeg = globePopup.querySelector('.popup-bar-neg');
-    if (barPos) barPos.style.width = `${(pos / total) * 100}%`;
-    if (barNeu) barNeu.style.width = `${(neu / total) * 100}%`;
-    if (barNeg) barNeg.style.width = `${(neg / total) * 100}%`;
-
-    globePopup.querySelector('.popup-summary').style.display = '';
-
-    // Link to job page
-    const cta = globePopup.querySelector('#popupCta');
-    if (cta) {
-        cta.href = `/job.html?id=${encodeURIComponent(place.id)}`;
-        cta.style.display = '';
-    }
-
-    // Cache for job page (in case user reloads)
-    try {
-        sessionStorage.setItem(`scraped:${place.id}`, JSON.stringify({
-            place,
-            reviews: allReviews,
-            scraped_at: scrapedAt,
-            source: 'cache',
-        }));
-    } catch {}
+    const pct = (n) => `${(n / total) * 100}%`;
+    return `
+        <article class="reatlas-popup" data-place-id="${escapeHtml(place.id || '')}">
+            <header class="reatlas-popup-head">
+                <span class="reatlas-popup-emoji" aria-hidden="true">${place.emoji || '📍'}</span>
+                <div>
+                    <h3 class="reatlas-popup-name">${escapeHtml(place.name || '')}</h3>
+                    <p class="reatlas-popup-loc">${escapeHtml([place.city, place.country].filter(Boolean).join(', '))}</p>
+                </div>
+                <button class="reatlas-popup-close" type="button" aria-label="Close">×</button>
+            </header>
+            <div class="reatlas-popup-meta">
+                <span class="reatlas-popup-rating">★ ${place.rating?.toFixed ? place.rating.toFixed(1) : (place.rating || '–')}</span>
+                <span class="reatlas-popup-count">${allReviews.length} of ${(place.reviews_count_estimate || allReviews.length).toLocaleString()} reviews</span>
+            </div>
+            <div class="reatlas-popup-summary">
+                <div class="reatlas-popup-bar">
+                    <div class="reatlas-popup-bar-pos" style="width:${pct(pos)}"></div>
+                    <div class="reatlas-popup-bar-neu" style="width:${pct(neu)}"></div>
+                    <div class="reatlas-popup-bar-neg" style="width:${pct(neg)}"></div>
+                </div>
+                <div class="reatlas-popup-bar-legend">
+                    <span><i></i>Pos</span>
+                    <span><i></i>Neu</span>
+                    <span><i></i>Neg</span>
+                </div>
+            </div>
+            <a class="reatlas-popup-cta" href="/job.html?id=${encodeURIComponent(place.id || '')}" target="_blank" rel="noopener">
+                Open full report
+                <span aria-hidden="true">→</span>
+            </a>
+        </article>
+    `;
 }
 
-function showPopupEmpty(placeName) {
-    if (!popupEmpty) return;
-    hideAllPopups();
-    popupEmpty.hidden = false;
-    popupEmpty.querySelector('.popup-name').textContent = 'Not yet scraped';
-    popupEmpty.querySelector('.popup-loc').textContent = placeName
-        ? `No cache for “${placeName}”`
-        : 'No cache for this place';
+function bindPopupClose(popup) {
+    // Use a small delay so MapLibre's internal click handler finishes first
+    setTimeout(() => {
+        const el = popup.getElement();
+        if (!el) return;
+        el.querySelectorAll('.reatlas-popup-close').forEach(btn => {
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                popup.remove();
+                if (currentScrape) currentScrape.abort();
+            };
+        });
+    }, 50);
 }
 
-async function loadPlace(place) {
+// Track the popup so we can update its HTML as scraping progresses
+let activePopup = null;
+let activeScrapeMarker = null;
+
+async function loadPlace(place, maplibregl) {
     if (currentScrape) currentScrape.abort();
     const ctrl = new AbortController();
     currentScrape = ctrl;
 
-    showPopupLoading(place);
+    // Open or re-use popup anchored to the marker (MapLibre Popup)
+    if (window.GlobeAPI) {
+        if (activePopup) {
+            try { activePopup.remove(); } catch {}
+            activePopup = null;
+        }
+        // Find the marker for this place
+        const markers = (window.GlobeAPI.getAllMarkers && window.GlobeAPI.getAllMarkers()) || [];
+        const marker = markers.find(m => m && m._placeId === place.id) || place.marker || place._marker || null;
+        activeScrapeMarker = marker;
+        if (maplibregl && marker) {
+            activePopup = new maplibregl.Popup({
+                offset: 22,
+                anchor: 'bottom',
+                closeButton: false,
+                closeOnClick: false,
+                maxWidth: '320px',
+                className: 'reatlas-popup-wrap',
+                offsetWidth: 320,
+            })
+                .setLngLat(marker.getLngLat())
+                .setHTML(loadingPopupHTML(place, 0, null))
+                .addTo(window.GlobeAPI.map);
+            bindPopupClose(activePopup);
+        } else {
+            // No marker for unknown URL — show at map center
+            activePopup = window.GlobeAPI.showEmptyState && window.GlobeAPI.showEmptyState(null);
+        }
+    }
 
     const params = place.id ? `?id=${encodeURIComponent(place.id)}`
                 : place.mapsUrl ? `?url=${encodeURIComponent(place.mapsUrl)}`
                 : place.query ? `?query=${encodeURIComponent(place.query)}`
                 : null;
-    if (!params) {
-        showPopupEmpty('unknown');
-        return;
-    }
+    if (!params) return;
 
     try {
         const res = await fetch(`/api/scrape${params}`, { signal: ctrl.signal });
-        if (!res.ok || !res.body) {
-            showPopupEmpty(place.name);
-            return;
-        }
+        if (!res.ok || !res.body) return;
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
@@ -326,83 +355,84 @@ async function loadPlace(place) {
                 try { evt = JSON.parse(line); } catch { continue; }
                 if (evt.type === 'meta') {
                     meta = evt;
-                    // Update place meta info from API
                     if (meta.place) Object.assign(place, meta.place);
                 } else if (evt.type === 'batch') {
                     allReviews = allReviews.concat(evt.reviews || []);
-                    // Live update the count
-                    const c = globePopup.querySelector('.popup-reviewcount');
-                    if (c) {
-                        const total = evt.total || meta?.total_estimate || allReviews.length;
-                        c.textContent = `Scraped ${evt.scraped || allReviews.length} / ${total} reviews…`;
-                    }
-                    // As soon as we have some data, render the content (the popup already shows place name)
-                    if (allReviews.length >= 1 && !globePopup.classList.contains('visible-data')) {
-                        // No-op — keep showing loading until done
+                    // Live update loading text
+                    if (activePopup) {
+                        activePopup.setHTML(loadingPopupHTML(place, evt.scraped || allReviews.length, evt.total));
+                        bindPopupClose(activePopup);
                     }
                 } else if (evt.type === 'done') {
                     scrapedAt = evt.scraped_at;
                 } else if (evt.type === 'error') {
-                    showPopupEmpty(meta?.place?.name || place.name || null);
-                    return;
+                    return; // leave popup showing
                 }
             }
         }
 
-        if (meta && allReviews.length > 0) {
+        if (meta && allReviews.length > 0 && activePopup) {
             const finalPlace = {
                 ...place,
                 name: meta.place?.name || place.name,
                 rating: meta.place?.rating || place.rating,
                 reviews_count_estimate: meta.place?.reviews_count_estimate || allReviews.length,
             };
-            showPopupContent(finalPlace, allReviews, scrapedAt);
-        } else {
-            showPopupEmpty(place.name);
+            activePopup.setHTML(contentPopupHTML(finalPlace, allReviews, scrapedAt));
+            bindPopupClose(activePopup);
         }
     } catch (err) {
-        if (err.name !== 'AbortError') showPopupEmpty(place.name);
+        if (err.name !== 'AbortError') console.error('[scrape]', err);
     }
-}
-
-function escapeHtml(s) {
-    return String(s)
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 // ============================================
 // Wire up events
 // ============================================
-window.addEventListener('globe:select', (e) => loadPlace(e.detail));
-window.addEventListener('globe:close', () => {
-    if (currentScrape) currentScrape.abort();
-    hideAllPopups();
+
+// Patch GlobeAPI.getAllMarkers before listeners run — needed for lookup
+// (added here so app.js doesn't need to know about MapLibre internals)
+window.addEventListener('globe:ready', () => {
+    // No-op — markers are looked up by place reference passed to loadPlace
 });
 
-popupClose?.addEventListener('click', () => {
-    if (currentScrape) currentScrape.abort();
-    hideAllPopups();
+let _maplibre = null;
+async function getMaplibre() {
+    if (_maplibre) return _maplibre;
+    try {
+        const mod = await import('maplibre-gl');
+        _maplibre = mod.default || mod;
+        window.maplibregl = _maplibre;
+    } catch (e) {
+        _maplibre = window.maplibregl || null;
+    }
+    return _maplibre;
+}
+
+window.addEventListener('globe:select', async (e) => {
+    const ml = await getMaplibre();
+    loadPlace(e.detail, ml);
 });
-popupCloseEmpty?.addEventListener('click', () => {
+window.addEventListener('globe:close', () => {
     if (currentScrape) currentScrape.abort();
-    hideAllPopups();
+    if (activePopup) { try { activePopup.remove(); } catch {} }
+    activePopup = null;
 });
 
 document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     if (currentScrape) currentScrape.abort();
-    hideAllPopups();
+    if (activePopup) { try { activePopup.remove(); } catch {} }
+    activePopup = null;
 });
 
-urlPasteForm?.addEventListener('submit', (e) => {
+urlPasteForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const url = urlPasteInput.value.trim();
     if (!url) return;
     urlPasteHint.innerHTML = `Resolving <code>${escapeHtml(url.slice(0, 60))}${url.length > 60 ? '…' : ''}</code>…`;
-    // Pass URL to globe — globe will dispatch globe:select with place={id?url?query?}
-    // We need a synthetic place object. Use a meta fetch via api/scrape?url first to resolve.
-    window.dispatchEvent(new CustomEvent('globe:select', { detail: { mapsUrl: url, name: url.slice(0, 40) } }));
+    const ml = await getMaplibre();
+    loadPlace({ mapsUrl: url, name: url.slice(0, 40) }, ml);
 });
 
 // ============================================

@@ -2189,3 +2189,260 @@ select {
 @media (max-width: 720px) {
     .globe-popup { width: 280px; }
 }
+
+/* ============================================
+   MapLibre globe — custom markers + popup
+   ============================================ */
+
+/* Hero container holds the map canvas */
+.hero-3d { background: #0c1824; }
+
+.hero-3d-fallback {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* MapLibre canvas fills container */
+.hero-3d .maplibregl-canvas-container { cursor: grab; }
+.hero-3d .maplibregl-canvas-container:active { cursor: grabbing; }
+.hero-3d .maplibregl-ctrl-attrib,
+.hero-3d .maplibregl-ctrl-bottom-right { display: none; }
+
+/* ============================================
+   Acid-green pulsing marker (custom DOM marker)
+   ============================================ */
+.reatlas-marker {
+    width: 28px;
+    height: 28px;
+    position: relative;
+    cursor: pointer;
+    transform-origin: center center;
+    transition: transform 0.18s ease;
+}
+.reatlas-marker:hover { transform: scale(1.15); }
+.reatlas-marker.is-hover .reatlas-marker-dot {
+    box-shadow: 0 0 0 3px rgba(197, 249, 0, 0.35), 0 2px 6px rgba(0,0,0,0.4);
+}
+
+.reatlas-marker-dot {
+    position: absolute;
+    inset: 50% auto auto 50%;
+    width: 14px;
+    height: 14px;
+    margin: -7px 0 0 -7px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px rgba(12, 24, 36, 0.5), 0 2px 6px rgba(0,0,0,0.4);
+    transition: box-shadow 0.18s ease;
+    z-index: 2;
+}
+
+.reatlas-marker-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 2px solid var(--accent);
+    opacity: 0;
+    animation: reatlas-marker-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes reatlas-marker-ping {
+    0%   { transform: scale(0.6); opacity: 0.8; }
+    80%  { transform: scale(2.0); opacity: 0; }
+    100% { transform: scale(2.0); opacity: 0; }
+}
+
+/* ============================================
+   Popup styling — MapLibre-native, anchored to marker
+   ============================================ */
+.reatlas-popup-wrap .maplibregl-popup-content {
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+    border-radius: 0;
+    overflow: visible;
+}
+.reatlas-popup-wrap .maplibregl-popup-tip {
+    border-top-color: var(--cream);
+    border-bottom-color: var(--cream);
+}
+.reatlas-popup-wrap .maplibregl-popup-close-button {
+    display: none;
+}
+
+.reatlas-popup {
+    width: 320px;
+    background: var(--cream);
+    color: var(--ink);
+    border: 1.5px solid var(--ink);
+    border-radius: var(--radius);
+    padding: 18px;
+    box-shadow: 0 10px 32px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0,0,0,0.25);
+    font-family: var(--font-body);
+    text-align: left;
+    opacity: 0;
+    transform: translateY(6px);
+    animation: reatlas-popup-in 0.3s 0.05s ease-out forwards;
+}
+
+@keyframes reatlas-popup-in {
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.reatlas-popup-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.reatlas-popup-emoji {
+    font-size: 30px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.reatlas-popup-titles { flex: 1; min-width: 0; }
+
+.reatlas-popup-name {
+    font-family: var(--font-display);
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0 0 2px;
+    line-height: 1.15;
+    color: var(--ink);
+    word-break: break-word;
+}
+
+.reatlas-popup-loc {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-soft);
+    margin: 0;
+}
+
+.reatlas-popup-close {
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    width: 26px;
+    height: 26px;
+    font-size: 17px;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--ink);
+    flex-shrink: 0;
+    transition: background 0.18s, color 0.18s;
+    font-family: var(--font-body);
+    padding: 0;
+}
+.reatlas-popup-close:hover {
+    background: var(--ink);
+    color: var(--cream);
+}
+
+.reatlas-popup-meta {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.reatlas-popup-rating {
+    color: var(--ink);
+    font-weight: 600;
+}
+
+.reatlas-popup-count {
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 11px;
+    color: var(--accent-dark);
+    background: var(--cream-2);
+    padding: 3px 8px;
+    border-radius: 999px;
+}
+
+.reatlas-popup-summary { margin-bottom: 14px; }
+
+.reatlas-popup-bar {
+    display: flex;
+    height: 6px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--line);
+    margin-bottom: 6px;
+}
+.reatlas-popup-bar-pos { background: var(--accent); }
+.reatlas-popup-bar-neu { background: var(--ink); }
+.reatlas-popup-bar-neg { background: #c2410c; }
+
+.reatlas-popup-bar-legend {
+    display: flex;
+    gap: 12px;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-faint);
+}
+.reatlas-popup-bar-legend i {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 2px;
+    margin-right: 3px;
+    vertical-align: middle;
+}
+.reatlas-popup-bar-legend span:nth-child(1) i { background: var(--accent); }
+.reatlas-popup-bar-legend span:nth-child(2) i { background: var(--ink); }
+.reatlas-popup-bar-legend span:nth-child(3) i { background: #c2410c; }
+
+.reatlas-popup-cta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--ink);
+    color: var(--cream);
+    padding: 11px 14px;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    transition: background 0.18s, color 0.18s, transform 0.18s;
+}
+.reatlas-popup-cta:hover {
+    background: var(--accent);
+    color: var(--ink);
+}
+
+.reatlas-popup-loading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    color: var(--ink-soft);
+    font-size: 13px;
+}
+.reatlas-popup-spinner {
+    width: 14px; height: 14px;
+    border: 2px solid var(--line);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+.reatlas-popup-empty-text {
+    font-size: 13px;
+    color: var(--ink-soft);
+    line-height: 1.5;
+    margin: 0 0 14px;
+}

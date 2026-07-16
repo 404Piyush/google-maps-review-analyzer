@@ -12,11 +12,13 @@
 
     <link rel="stylesheet" href="styles.css">
 
+    <!-- MapLibre GL for the globe -->
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.15.0/dist/maplibre-gl.css">
+
     <script type="importmap">
     {
         "imports": {
-            "three": "https://esm.sh/three@0.185.1",
-            "three/": "https://esm.sh/three@0.185.1/",
+            "maplibre-gl": "https://esm.sh/maplibre-gl@5.15.0",
             "d3": "https://esm.sh/d3@7.9.0",
             "d3-cloud": "https://esm.sh/d3-cloud@1.2.9",
             "marked": "https://esm.sh/marked@12.0.2"
@@ -103,11 +105,12 @@
                 <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                     <defs>
                         <radialGradient id="g1" cx="50%" cy="50%">
-                            <stop offset="0%" stop-color="#c5f900" stop-opacity="0.3"/>
-                            <stop offset="100%" stop-color="#c5f900" stop-opacity="0"/>
+                            <stop offset="0%" stop-color="#1f4d6b" stop-opacity="0.5"/>
+                            <stop offset="100%" stop-color="#1f4d6b" stop-opacity="0"/>
                         </radialGradient>
                     </defs>
                     <circle cx="200" cy="200" r="180" fill="url(#g1)"/>
+                    <text x="200" y="200" text-anchor="middle" fill="#c0caf5" font-family="sans-serif" font-size="13" dy="4">loading the world…</text>
                 </svg>
             </div>
         </div>
@@ -484,73 +487,7 @@ output/intermediate-analysis.json</code></pre>
     </div>
 </footer>
 
-<!-- ============ GLOBE POPUP (anchored to active pin, minimal) ============ -->
-<div id="globePopup" class="globe-popup" hidden>
-    <div class="globe-popup-tail" aria-hidden="true"></div>
-    <div class="globe-popup-card">
-        <header class="popup-head">
-            <span class="popup-emoji" aria-hidden="true"></span>
-            <div class="popup-titles">
-                <h3 class="popup-name"></h3>
-                <p class="popup-loc"></p>
-            </div>
-            <button class="popup-close magnetic" aria-label="Close" type="button">×</button>
-        </header>
-
-        <div class="popup-meta" id="popupMeta">
-            <span class="popup-rating"></span>
-            <span class="popup-reviewcount"></span>
-        </div>
-
-        <div class="popup-summary" id="popupSummary">
-            <div class="popup-bar">
-                <div class="popup-bar-pos"></div>
-                <div class="popup-bar-neu"></div>
-                <div class="popup-bar-neg"></div>
-            </div>
-            <div class="popup-bar-legend">
-                <span><i></i>Pos</span>
-                <span><i></i>Neu</span>
-                <span><i></i>Neg</span>
-            </div>
-        </div>
-
-        <a class="popup-cta magnetic" id="popupCta" href="#">
-            Open full report
-            <span class="popup-cta-arrow" aria-hidden="true">→</span>
-        </a>
-    </div>
-</div>
-
-<!-- ============ LOADING OVERLAY (for globe pin clicks) ============ -->
-<div id="popupLoading" class="popup-loading" hidden>
-    <div class="popup-loading-card">
-        <div class="popup-spinner"></div>
-        <p>Reading reviews…</p>
-    </div>
-</div>
-
-<!-- ============ EMPTY STATE (no cache for this URL) ============ -->
-<div id="popupEmpty" class="globe-popup popup-empty" hidden>
-    <div class="globe-popup-tail" aria-hidden="true"></div>
-    <div class="globe-popup-card popup-empty-card">
-        <header class="popup-head">
-            <div class="popup-titles">
-                <h3 class="popup-name">Not yet scraped</h3>
-                <p class="popup-loc">Run the local scraper to add this place.</p>
-            </div>
-            <button class="popup-close magnetic" aria-label="Close" type="button">×</button>
-        </header>
-        <p class="popup-empty-text">
-            We couldn't find a cached review set for this URL. Run the scraper locally
-            and the data will appear here once it's published.
-        </p>
-        <a class="popup-cta magnetic" href="https://github.com/404Piyush/google-maps-review-analyzer#readme" target="_blank" rel="noopener">
-            How scraping works
-            <span class="popup-cta-arrow" aria-hidden="true">→</span>
-        </a>
-    </div>
-</div>
+<!-- (Popups are now managed by MapLibre GL inside globe.js — no DOM here.) -->
 
 <script type="module" src="app.js"></script>
 </body>
