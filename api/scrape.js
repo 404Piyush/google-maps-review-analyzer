@@ -21,11 +21,18 @@
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
+const http = require('http');
 const { URL } = require('url');
 
 const CACHE_DIR = path.join(process.cwd(), 'cache', 'reviews');
 const BATCH_SIZE = 8;
 const BATCH_DELAY_MS = 140; // visual pacing so the count can be seen
+
+// When set, cache misses are forwarded to the dedicated scraper service
+// (e.g. https://gmaps-scraper.onrender.com). That service returns NDJSON with the
+// same shape as this handler, so we just stream its response through.
+const SCRAPER_URL = (process.env.SCRAPER_URL || '').replace(/\/$/, '');
+const SCRAPER_API_KEY = process.env.SCRAPER_API_KEY || '';
 
 // ============================================
 // Resolve a Google Maps short URL → final URL
@@ -141,6 +148,53 @@ module.exports = async (req, res) => {
         }
 
         if (!cache) {
+            // ---- Optional: forward to live scraper service ----
+            if (SCRAPER_URL) {
+                try {
+                    const params = new URLSearchParams();
+                    if (mapsUrl) params.set('url', mapsUrl);
+                    if (textQuery) params.set('query', textQuery);
+                    if (placeIdHint) params.set('id', placeIdHint);
+                    if (SCRAPER_API_KEY) params.set('key', SCRAPER_API_KEY);
+
+                    const target = `${SCRAPER_URL}/scrape?${params.toString()}`;
+                    const t = new URL(target);
+                    const lib = t.protocol === 'https:' ? https : http;
+
+                    await new Promise((resolve) => {
+                        const upstream = lib.request({
+                            hostname: t.hostname,
+                            port: t.port || (t.protocol === 'https:' ? 443 : 80),
+                            path: t.pathname + t.search,
+                            method: 'GET',
+                            timeout: 90000,
+                            headers: { 'X-Scraper-Key': SCRAPER_API_KEY },
+                        }, (upRes) => {
+                            res.setHeader('Content-Type', 'application/x-ndjson');
+                            upRes.pipe(res);
+                            upRes.on('end', resolve);
+                            upRes.on('error', resolve);
+                        });
+                        upstream.on('timeout', () => {
+                            upstream.destroy(new Error('scraper timeout'));
+                            writeLine(res, { type: 'error', error: 'scraper_timeout', message: 'Upstream scraper >90s', ...extraMeta });
+                            res.end();
+                            resolve();
+                        });
+                        upstream.on('error', (e) => {
+                            writeLine(res, { type: 'error', error: 'scraper_unreachable', message: e.message, ...extraMeta });
+                            res.end();
+                            resolve();
+                        });
+                        upstream.end();
+                    });
+                    return;
+                } catch (err) {
+                    writeLine(res, { type: 'error', error: 'proxy_failed', message: err.message, ...extraMeta });
+                    return res.end();
+                }
+            }
+
             writeLine(res, {
                 type: 'error',
                 error: 'no_cache',

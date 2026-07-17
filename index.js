@@ -12,21 +12,31 @@ const ARGS = process.argv.slice(2);
 const FLAG = (name) => ARGS.find(a => a.startsWith(`--${name}=`))?.split('=').slice(1).join('=');
 const HAS = (name) => ARGS.includes(`--${name}`);
 
-const CONFIG = {
-    url: process.env.GOOGLE_MAPS_URL || FLAG('url') || 'https://maps.app.goo.gl/CCGmfPudoLzPoK2a7',
-    parallelProxies: Number(process.env.PARALLEL_PROXIES || FLAG('parallel-proxies') || 2),
+const DEFAULT_CONFIG = {
+    parallelProxies: Number(process.env.PARALLEL_PROXIES || 2),
     navTimeoutMs: Number(process.env.NAV_TIMEOUT_MS || 30000),
     navSettleMs: Number(process.env.NAV_SETTLE_MS || 1500),
     clickDelayMs: Number(process.env.CLICK_DELAY_MS || 1500),
     scrollIntervalMs: Number(process.env.SCROLL_INTERVAL_MS || 1800),
     maxStableChecks: Number(process.env.MAX_STABLE_CHECKS || 3),
-    headless: !HAS('headed'),
-    fast: HAS('fast'),
-    skipProxy: HAS('no-proxy'),
+    headless: true,
+    fast: false,
+    skipProxy: false,
+    useCache: true,
     proxyFile: path.join(__dirname, 'proxies.txt'),
     outDir: path.join(__dirname, 'output'),
     cacheFile: path.join(__dirname, '.url-cache.json'),
     cacheTtlHours: Number(process.env.CACHE_TTL_HOURS || 24),
+};
+
+const CONFIG = {
+    ...DEFAULT_CONFIG,
+    url: process.env.GOOGLE_MAPS_URL || FLAG('url') || 'https://maps.app.goo.gl/CCGmfPudoLzPoK2a7',
+    parallelProxies: Number(process.env.PARALLEL_PROXIES || FLAG('parallel-proxies') || DEFAULT_CONFIG.parallelProxies),
+    headless: !HAS('headed') && process.env.HEADED !== '1',
+    fast: HAS('fast'),
+    skipProxy: HAS('no-proxy'),
+    useCache: !HAS('no-cache'),
 };
 
 const SCREENSHOTS_DIR = path.join(CONFIG.outDir, 'screenshots');
@@ -228,37 +238,47 @@ async function raceProxies(proxies) {
     return { ok: false, reason: 'all failed' };
 }
 
-(async () => {
+/**
+ * Run a single scrape against a URL, returning the review list.
+ * @param {string} url - Google Maps URL (short or full).
+ * @param {object} [options] - overrides for any DEFAULT_CONFIG field.
+ * @returns {Promise<{ok: boolean, count?: number, reviews?: Array, reason?: string, source?: string}>}
+ */
+async function scrape(url, options = {}) {
     const t0 = Date.now();
-    console.log(`Starting scrape: ${CONFIG.url}`);
-    console.log(`   parallel-proxies: ${CONFIG.parallelProxies}, fast: ${CONFIG.fast}`);
+    const runConfig = { ...DEFAULT_CONFIG, url, ...options };
+
+    // Reuse module-level CONFIG for the proxy/cache paths so we keep behavior aligned
+    Object.assign(CONFIG, runConfig);
+
+    console.log(`[scrape] ${url} (parallel=${CONFIG.parallelProxies}, fast=${CONFIG.fast})`);
 
     if (!CONFIG.fast && !fs.existsSync(SCREENSHOTS_DIR)) fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
 
     const cache = await loadCache();
     const cached = cache[CONFIG.url];
-    if (cached && isCacheFresh(cached) && !HAS('no-cache')) {
-        console.log(`Cache hit (${cached.count} reviews, <${CONFIG.cacheTtlHours}h old)`);
+    if (cached && isCacheFresh(cached) && CONFIG.useCache) {
+        console.log(`[scrape] cache hit (${cached.count} reviews)`);
         await streamReviews(cached.reviews);
-        console.log(`Done in ${Date.now() - t0}ms (cache)`);
-        if (HAS('analyze')) {
-            const { execSync } = require('child_process');
-            try {
-                console.log('Running topic analysis...');
-                execSync(`node topic-analysis.js --input "${path.join(CONFIG.outDir, 'reviews.json')}"`, { stdio: 'inherit' });
-            } catch (e) { console.error('Analysis failed:', e.message); }
-        }
-        return;
+        return { ok: true, count: cached.count, reviews: cached.reviews, source: 'cache', elapsedMs: Date.now() - t0 };
     }
 
     const proxies = CONFIG.skipProxy ? [] : loadProxies();
-    console.log(`Loaded ${proxies.length} proxies`);
-
     const result = await raceProxies(proxies);
 
     if (result.ok) {
-        const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
-        console.log(`\nDone in ${elapsed}s — ${result.count} reviews -> ${path.join(CONFIG.outDir, 'reviews.json')}`);
+        return { ok: true, count: result.count, source: 'live', elapsedMs: Date.now() - t0 };
+    }
+    return { ok: false, reason: result.reason };
+}
+
+module.exports = { scrape, loadCache, saveCache, CONFIG: DEFAULT_CONFIG };
+
+if (require.main === module) {
+    (async () => {
+        const result = await scrape(CONFIG.url);
+        console.log(`Done: ${JSON.stringify(result)}`);
+        if (!result.ok) process.exit(1);
         if (HAS('analyze')) {
             const { execSync } = require('child_process');
             try {
@@ -266,8 +286,5 @@ async function raceProxies(proxies) {
                 execSync(`node topic-analysis.js --input "${path.join(CONFIG.outDir, 'reviews.json')}"`, { stdio: 'inherit' });
             } catch (e) { console.error('Analysis failed:', e.message); }
         }
-    } else {
-        console.log(`\nScrape failed: ${result.reason}`);
-        process.exit(1);
-    }
-})();
+    })();
+}

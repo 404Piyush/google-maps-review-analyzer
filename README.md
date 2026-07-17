@@ -25,7 +25,9 @@
 
 </div>
 
-> **🎨 What's new in v1.3.0:** Complete editorial redesign of the demo page (cream + ink + acid green, Fraunces serif display, D3.js custom viz, Three.js wireframe icosahedron in hero, custom cursor, magnetic buttons, 3D tilt-on-hover). Backend API unchanged — same Nemotron 3 Ultra 550B streaming.
+> **🚀 What's new in v1.6.0:** Headless scraper microservice. `index.js` now exports a `scrape(url, options)` function that's wrapped by `scraper-server.js` (Express) and packaged in `Dockerfile` for one-click deploy to Render / Fly.io / any Docker host. Add `SCRAPER_URL` to your Vercel env vars and the hosted demo will forward cache-miss URLs to your scraper service in real time.
+>
+> 🎨 v1.3.0: Editorial redesign of the demo page (cream + ink + acid green, Fraunces serif, D3.js viz, Three.js wireframe, custom cursor, magnetic buttons, 3D tilt).
 
 ---
 
@@ -230,9 +232,17 @@ ollama pull qwen3:8b
 
 ```
 google-maps-review-analyzer/
-├── index.js                  # Stage 1 — stealth scraper
+├── index.js                  # Stage 1 — stealth scraper (also exports scrape() fn)
+├── scraper-server.js         # Stage 1 service — Express wrapper around index.js for cloud deploys
 ├── analyze.js                # Stage 2 alt — offline keyword sentiment
 ├── topic-analysis.js         # Stage 2/3 — Ollama two-pass report
+├── places-api.js             # Stage 1 alt — Google Places API (no Puppeteer)
+├── api/                      # Vercel serverless endpoints
+│   ├── scrape.js             # /api/scrape (cache → optional proxy to scraper-server)
+│   └── analyze.js            # /api/analyze (OpenRouter streaming)
+├── dev-server.js             # Local web demo server
+├── Dockerfile                # Container image for scraper-server (Chromium + Node)
+├── render.yaml               # One-click deploy to Render.com free tier
 ├── proxies.txt               # (you create this — gitignored)
 ├── package.json
 ├── .gitignore
@@ -241,6 +251,44 @@ google-maps-review-analyzer/
 ├── intermediate-analysis.json# generated
 └── analysis-report.md        # generated — the deliverable
 ```
+
+---
+
+## ☁️ Deploying the scraper as a service
+
+The Puppeteer scraper needs Chromium, so it can't run on Vercel's serverless tier. Use `scraper-server.js` + `Dockerfile` + `render.yaml` to run it on any Docker host.
+
+**Render.com (recommended, free tier)**
+
+1. Fork this repo to your GitHub account.
+2. In the Render dashboard, click *New → Blueprint* and point it at your fork. Render reads `render.yaml` automatically.
+3. Wait ~3 min for the first build. The service URL is shown in the dashboard (e.g. `https://gmaps-scraper.onrender.com`).
+
+**Self-host on any VPS / Docker host**
+
+```bash
+docker build -t gmaps-scraper .
+docker run -p 8080:8080 -e SCRAPER_API_KEY=changeme gmaps-scraper
+```
+
+**Endpoints**
+
+| Method | Path              | Notes                                                          |
+| ------ | ----------------- | -------------------------------------------------------------- |
+| GET    | `/health`         | Liveness + last scrape result, JSON.                           |
+| GET    | `/scrape?url=...` | NDJSON stream: `meta` → N×`batch` → `done` \| `error`.         |
+| GET    | `/scrape?url=...&key=...` | Pass `key` only if `SCRAPER_API_KEY` is set on the server. |
+
+**Hook the live demo to your scraper**
+
+The hosted demo at `repo-dun-six.vercel.app` reads two env vars to decide what to do on a cache miss:
+
+| Env var           | Effect                                                    |
+| ----------------- | --------------------------------------------------------- |
+| `SCRAPER_URL`     | Set to `https://gmaps-scraper.onrender.com` (or your own) |
+| `SCRAPER_API_KEY` | Optional shared secret; must match the scraper service    |
+
+When both are set, any URL the user pastes that isn't already cached in `cache/reviews/<slug>.json` is forwarded to the scraper service and streamed back to the browser. No frontend changes needed.
 
 ---
 

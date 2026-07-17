@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: gmaps-scraper
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: NO_PROXY
+        value: "1"
+      - key: FAST
+        value: "1"
+      - key: CACHE_TTL_HOURS
+        value: "24"
+      - key: SCRAPER_API_KEY
+        generateValue: true
+        # For production, set this to a real secret in the Render dashboard.
