@@ -337,13 +337,23 @@ async function loadPlace(place) {
                 : null;
     if (!params) {
         showPopup(emptyPopupHTML(place.name), null);
+        resetHint();
         return;
     }
 
+    // Hard timeout — if the server doesn't respond in 12s, show empty popup
+    const timeoutCtrl = new AbortController();
+    const timeoutId = setTimeout(() => timeoutCtrl.abort(), 12000);
+    // Merge aborts: if either fires, abort
+    ctrl.signal.addEventListener('abort', () => timeoutCtrl.abort());
+    timeoutCtrl.signal.addEventListener('abort', () => ctrl.abort());
+
     try {
-        const res = await fetch(`/api/scrape${params}`, { signal: ctrl.signal });
+        const res = await fetch(`/api/scrape${params}`, { signal: timeoutCtrl.signal });
+        clearTimeout(timeoutId);
         if (!res.ok || !res.body) {
             showPopup(emptyPopupHTML(place.name), null);
+            resetHint();
             return;
         }
         const reader = res.body.getReader();
@@ -351,10 +361,12 @@ async function loadPlace(place) {
         let buffer = '';
         let meta = null;
         let allReviews = [];
+        let streamEnded = false;
+        let erroredEarly = false;
 
-        while (true) {
+        while (!streamEnded) {
             const { value, done } = await reader.read();
-            if (done) break;
+            if (done) { streamEnded = true; break; }
             buffer += decoder.decode(value, { stream: true });
             let nl;
             while ((nl = buffer.indexOf('\n')) >= 0) {
@@ -368,7 +380,6 @@ async function loadPlace(place) {
                     if (meta.place) Object.assign(place, meta.place);
                 } else if (evt.type === 'batch') {
                     allReviews = allReviews.concat(evt.reviews || []);
-                    // Skip in-flight updates during animation chaos
                     if (!ctrl.signal.aborted) {
                         globePopup.innerHTML = loadingPopupHTML(place, evt.scraped || allReviews.length, evt.total);
                         bindPopupClose();
@@ -376,10 +387,15 @@ async function loadPlace(place) {
                 } else if (evt.type === 'done') {
                     // Stream finished
                 } else if (evt.type === 'error') {
-                    showPopup(emptyPopupHTML(place.name), null);
-                    return;
+                    erroredEarly = true;
                 }
             }
+        }
+
+        if (erroredEarly) {
+            showPopup(emptyPopupHTML(place.name), null);
+            resetHint();
+            return;
         }
 
         if (meta && allReviews.length > 0) {
@@ -390,12 +406,25 @@ async function loadPlace(place) {
                 reviews_count_estimate: meta.place?.reviews_count_estimate || allReviews.length,
             };
             showPopup(contentPopupHTML(finalPlace, allReviews), finalPlace.id);
+            resetHint();
         } else {
             showPopup(emptyPopupHTML(place.name), null);
+            resetHint();
         }
     } catch (err) {
-        if (err.name !== 'AbortError') console.error('[scrape]', err);
+        if (err.name === 'AbortError' && !ctrl.signal.aborted) {
+            // Pure timeout (not user-cancel): the server is too slow — show empty
+            showPopup(emptyPopupHTML(place.name), null);
+        } else if (err.name !== 'AbortError') {
+            console.error('[scrape]', err);
+            showPopup(emptyPopupHTML(place.name), null);
+        }
+        resetHint();
     }
+}
+
+function resetHint() {
+    if (urlPasteHint) urlPasteHint.innerHTML = '';
 }
 
 // ============================================
