@@ -248,7 +248,7 @@ function loadingPopupHTML(place, currentCount, total) {
             <div class="reatlas-popup-tail" aria-hidden="true"></div>
             <header class="reatlas-popup-head">
                 <span class="reatlas-popup-emoji" aria-hidden="true">${place.emoji || '📍'}</span>
-                <div>
+                <div class="reatlas-popup-titles">
                     <h3 class="reatlas-popup-name">${escapeHtml(place.name)}</h3>
                     <p class="reatlas-popup-loc">${escapeHtml([place.city, place.country].filter(Boolean).join(', '))}</p>
                 </div>
@@ -273,7 +273,7 @@ function contentPopupHTML(place, allReviews) {
             <div class="reatlas-popup-tail" aria-hidden="true"></div>
             <header class="reatlas-popup-head">
                 <span class="reatlas-popup-emoji" aria-hidden="true">${place.emoji || '📍'}</span>
-                <div>
+                <div class="reatlas-popup-titles">
                     <h3 class="reatlas-popup-name">${escapeHtml(place.name || '')}</h3>
                     <p class="reatlas-popup-loc">${escapeHtml([place.city, place.country].filter(Boolean).join(', '))}</p>
                 </div>
@@ -308,7 +308,7 @@ function emptyPopupHTML(placeName) {
         <article class="reatlas-popup reatlas-popup-empty">
             <div class="reatlas-popup-tail" aria-hidden="true"></div>
             <header class="reatlas-popup-head">
-                <div>
+                <div class="reatlas-popup-titles">
                     <h3 class="reatlas-popup-name">Not yet scraped</h3>
                     <p class="reatlas-popup-loc">No cached reviews for ${escapeHtml(placeName || 'this place')}</p>
                 </div>

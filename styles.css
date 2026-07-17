@@ -593,19 +593,20 @@ body.is-magnetic .cursor-ring { border-color: var(--accent); }
     to { opacity: 1; transform: translateY(0); }
 }
 
-.popup-head {
+.reatlas-popup-head {
     display: flex;
     align-items: flex-start;
     gap: 12px;
     margin-bottom: 12px;
 }
-.popup-emoji {
+.reatlas-popup-emoji {
     font-size: 30px;
     line-height: 1;
     flex-shrink: 0;
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
 }
-.popup-titles { flex: 1; min-width: 0; }
-.popup-name {
+.reatlas-popup-titles { flex: 1; min-width: 0; }
+.reatlas-popup-name {
     font-family: var(--font-display);
     font-size: 19px;
     font-weight: 600;
@@ -614,14 +615,14 @@ body.is-magnetic .cursor-ring { border-color: var(--accent); }
     line-height: 1.15;
     word-break: break-word;
 }
-.popup-loc {
+.reatlas-popup-loc {
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--ink-soft);
     margin: 0;
 }
-.popup-close {
+.reatlas-popup-close {
     background: transparent;
     border: 1px solid var(--line);
     border-radius: 50%;
@@ -632,12 +633,12 @@ body.is-magnetic .cursor-ring { border-color: var(--accent); }
     flex-shrink: 0;
     transition: background var(--t-fast), color var(--t-fast);
 }
-.popup-close:hover {
+.reatlas-popup-close:hover {
     background: var(--ink);
     color: var(--cream);
 }
 
-.popup-meta {
+.reatlas-popup-meta {
     display: flex;
     gap: 10px;
     align-items: center;
@@ -646,8 +647,8 @@ body.is-magnetic .cursor-ring { border-color: var(--accent); }
     margin-bottom: 12px;
     flex-wrap: wrap;
 }
-.popup-rating { color: var(--ink); font-weight: 600; }
-.popup-count {
+.reatlas-popup-rating { color: var(--ink); font-weight: 600; }
+.reatlas-popup-count {
     font-family: var(--font-mono);
     font-size: 11px;
     color: var(--accent-dark);
@@ -656,8 +657,8 @@ body.is-magnetic .cursor-ring { border-color: var(--accent); }
     border-radius: 999px;
 }
 
-.popup-summary { margin-bottom: 14px; }
-.popup-bar {
+.reatlas-popup-summary { margin-bottom: 14px; }
+.reatlas-popup-bar {
     display: flex;
     height: 6px;
     border-radius: 999px;
@@ -665,10 +666,10 @@ body.is-magnetic .cursor-ring { border-color: var(--accent); }
     background: var(--line);
     margin-bottom: 6px;
 }
-.popup-bar-pos { background: var(--accent); }
-.popup-bar-neu { background: var(--ink); }
-.popup-bar-neg { background: #c2410c; }
-.popup-bar-legend {
+.reatlas-popup-bar-pos { background: var(--accent); }
+.reatlas-popup-bar-neu { background: var(--ink); }
+.reatlas-popup-bar-neg { background: #c2410c; }
+.reatlas-popup-bar-legend {
     display: flex;
     gap: 12px;
     font-size: 9px;
@@ -676,18 +677,18 @@ body.is-magnetic .cursor-ring { border-color: var(--accent); }
     letter-spacing: 0.08em;
     color: var(--ink-faint);
 }
-.popup-bar-legend i {
+.reatlas-popup-bar-legend i {
     display: inline-block;
     width: 6px; height: 6px;
     border-radius: 2px;
     margin-right: 3px;
     vertical-align: middle;
 }
-.popup-bar-legend span:nth-child(1) i { background: var(--accent); }
-.popup-bar-legend span:nth-child(2) i { background: var(--ink); }
-.popup-bar-legend span:nth-child(3) i { background: #c2410c; }
+.reatlas-popup-bar-legend span:nth-child(1) i { background: var(--accent); }
+.reatlas-popup-bar-legend span:nth-child(2) i { background: var(--ink); }
+.reatlas-popup-bar-legend span:nth-child(3) i { background: #c2410c; }
 
-.popup-cta {
+.reatlas-popup-cta {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -701,9 +702,9 @@ body.is-magnetic .cursor-ring { border-color: var(--accent); }
     letter-spacing: 0.02em;
     transition: background var(--t-fast), color var(--t-fast);
 }
-.popup-cta:hover { background: var(--accent); color: var(--ink); }
+.reatlas-popup-cta:hover { background: var(--accent); color: var(--ink); }
 
-.popup-loading-card {
+.reatlas-popup-loading {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -711,42 +712,19 @@ body.is-magnetic .cursor-ring { border-color: var(--accent); }
     color: var(--ink-soft);
     font-size: 13px;
 }
-.popup-spinner {
+.reatlas-popup-spinner {
     width: 14px; height: 14px;
     border: 2px solid var(--line);
     border-top-color: var(--accent);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
 }
-.popup-empty-text {
+.reatlas-popup-empty-text {
     font-size: 13px;
     color: var(--ink-soft);
     line-height: 1.5;
     margin: 0 0 14px;
-}
-
-/* Loading overlay (centered modal-like) */
-.popup-loading {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    z-index: 150;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
-}
-.popup-loading[hidden] { display: none; }
-.popup-loading-card {
-    background: var(--ink);
-    color: var(--cream);
-    padding: 12px 20px;
-    border-radius: 999px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-family: var(--font-display);
-    font-size: 14px;
-    pointer-events: auto;
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
