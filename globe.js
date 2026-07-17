@@ -35,7 +35,7 @@ async function initGlobe(container) {
     // ============================================
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(34, width / height, 0.1, 1000);
-    camera.position.z = 3.4;
+    camera.position.z = 5.0;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -104,11 +104,16 @@ async function initGlobe(container) {
         if (topoClient) {
             const countries = topoClient(topo, topo.objects.countries);
 
+            // Skip overly-long horizontal segments — these are data artifacts from
+            // simplified polygons that create visible black bands across the ocean.
+            const isFlatArtifact = (a, b) =>
+                Math.abs(b[1] - a[1]) < 0.25 && Math.abs(b[0] - a[0]) > 20;
+
             // Outer waterline (light blue rim around continents)
             ctx.lineJoin = 'round';
             ctx.lineCap = 'round';
             ctx.fillStyle = '#aac9d8'; // light watery halo around continents
-            ctx.lineWidth = 14;
+            ctx.lineWidth = 10;
 
             countries.features.forEach(c => {
                 const polys = c.geometry.type === 'MultiPolygon' ? c.geometry.coordinates : [c.geometry.coordinates];
@@ -119,7 +124,9 @@ async function initGlobe(container) {
                         ctx.beginPath();
                         ring.forEach(([lng, lat], i) => {
                             const p = project(lng, lat);
-                            if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+                            if (i === 0) ctx.moveTo(p.x, p.y);
+                            else if (isFlatArtifact(ring[i - 1], [lng, lat])) ctx.moveTo(p.x, p.y);
+                            else ctx.lineTo(p.x, p.y);
                         });
                         ctx.closePath();
                         ctx.stroke();
@@ -137,7 +144,9 @@ async function initGlobe(container) {
                         ctx.beginPath();
                         ring.forEach(([lng, lat], i) => {
                             const p = project(lng, lat);
-                            if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+                            if (i === 0) ctx.moveTo(p.x, p.y);
+                            else if (isFlatArtifact(ring[i - 1], [lng, lat])) ctx.moveTo(p.x, p.y);
+                            else ctx.lineTo(p.x, p.y);
                         });
                         ctx.closePath();
                         ctx.fill();
@@ -155,7 +164,7 @@ async function initGlobe(container) {
 
             // Thin black outlines on top of fills for cartoon crispness
             ctx.strokeStyle = '#0a0a0a';
-            ctx.lineWidth = 2.5;
+            ctx.lineWidth = 1.2;
             countries.features.forEach(c => {
                 const polys = c.geometry.type === 'MultiPolygon' ? c.geometry.coordinates : [c.geometry.coordinates];
                 polys.forEach(poly => {
@@ -163,7 +172,9 @@ async function initGlobe(container) {
                         ctx.beginPath();
                         ring.forEach(([lng, lat], i) => {
                             const p = project(lng, lat);
-                            if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+                            if (i === 0) ctx.moveTo(p.x, p.y);
+                            else if (isFlatArtifact(ring[i - 1], [lng, lat])) ctx.moveTo(p.x, p.y);
+                            else ctx.lineTo(p.x, p.y);
                         });
                         ctx.closePath();
                         ctx.stroke();
@@ -173,23 +184,8 @@ async function initGlobe(container) {
         }
     }
 
-    // Subtle graticule (latitude/longitude lines)
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-    ctx.lineWidth = 1;
-    for (let lng = -180; lng <= 180; lng += 30) {
-        const p = project(lng, 0);
-        ctx.beginPath();
-        ctx.moveTo(p.x, 0);
-        ctx.lineTo(p.x, TH);
-        ctx.stroke();
-    }
-    for (let lat = -60; lat <= 60; lat += 30) {
-        const p = project(0, lat);
-        ctx.beginPath();
-        ctx.moveTo(0, p.y);
-        ctx.lineTo(TW, p.y);
-        ctx.stroke();
-    }
+    // (no graticule — was creating a subtle horizontal band across the equator
+    //  that read as a "line" on the rendered globe)
 
     // Mask the south + north edge of the canvas with ocean so any
     // polygons that touch lat=-90/90 don't draw a thick line at the
@@ -212,7 +208,7 @@ async function initGlobe(container) {
     earthTex.anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 4);
 
     const GLOBE_R = 1.4;
-    const sphereGeo = new THREE.SphereGeometry(GLOBE_R, 96, 96);
+    const sphereGeo = new THREE.SphereGeometry(GLOBE_R, 128, 96);
     const sphere = new THREE.Mesh(
         sphereGeo,
         new THREE.MeshBasicMaterial({ map: earthTex })
@@ -242,30 +238,37 @@ async function initGlobe(container) {
         pivot.lookAt(0, 0, 0);
 
         const dot = new THREE.Mesh(
-            new THREE.SphereGeometry(0.018, 16, 16),
+            new THREE.SphereGeometry(0.032, 16, 16),
             new THREE.MeshBasicMaterial({ color: 0xef4444 })
         );
         pivot.add(dot);
 
         const halo = new THREE.Mesh(
-            new THREE.SphereGeometry(0.04, 16, 16),
-            new THREE.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0, side: THREE.BackSide })
+            new THREE.SphereGeometry(0.06, 16, 16),
+            new THREE.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0.18, side: THREE.BackSide })
         );
         pivot.add(halo);
 
-        const beamPts = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0.18)];
+        const beamPts = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0.22)];
         const beamMat = new THREE.LineBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0.5 });
         const beam = new THREE.Line(new THREE.BufferGeometry().setFromPoints(beamPts), beamMat);
         pivot.add(beam);
 
         const cap = new THREE.Mesh(
-            new THREE.SphereGeometry(0.012, 12, 12),
+            new THREE.SphereGeometry(0.022, 12, 12),
             new THREE.MeshBasicMaterial({ color: 0xef4444 })
         );
-        cap.position.set(0, 0, 0.18);
+        cap.position.set(0, 0, 0.22);
         pivot.add(cap);
 
-        pivot.userData = { place, dot, halo, beam, cap, type: 'pin', basePhase: i * 0.7 };
+        // Invisible hit zone — makes clicks forgiving (forgives ~80px on a 520px canvas)
+        const hit = new THREE.Mesh(
+            new THREE.SphereGeometry(0.13, 12, 12),
+            new THREE.MeshBasicMaterial({ visible: false, depthWrite: false })
+        );
+        pivot.add(hit);
+
+        pivot.userData = { place, dot, halo, beam, cap, hit, type: 'pin', basePhase: i * 0.7 };
         sphere.add(pivot);
         pins.push(pivot);
     });
@@ -280,7 +283,7 @@ async function initGlobe(container) {
     let isDragging = false;
     let dragStart = { x: 0, y: 0 };
     let dragDelta = { x: 0, y: 0 };
-    let zoom = 3.4;
+    let zoom = 5.0;
 
     renderer.domElement.style.touchAction = 'none';
     renderer.domElement.style.cursor = 'grab';
@@ -318,7 +321,7 @@ async function initGlobe(container) {
     });
     renderer.domElement.addEventListener('wheel', (e) => {
         e.preventDefault();
-        zoom = Math.max(2.0, Math.min(5.5, zoom + e.deltaY * 0.002));
+        zoom = Math.max(3.5, Math.min(7.5, zoom + e.deltaY * 0.002));
     }, { passive: false });
 
     // Capture-phase click guard: swallow the click if it hits a recently-closed marker
@@ -337,7 +340,7 @@ async function initGlobe(container) {
     renderer.domElement.addEventListener('click', suppressJustClosedClick, { capture: true });
 
     renderer.domElement.addEventListener('click', (e) => {
-        if (Math.abs(dragDelta.x) + Math.abs(dragDelta.y) > 0.05) return;
+        if (Math.abs(dragDelta.x) + Math.abs(dragDelta.y) > 0.12) return;
         raycaster.setFromCamera(mouse, camera);
         const hits = raycaster.intersectObjects(pins, true);
         if (hits.length > 0) {
@@ -431,8 +434,8 @@ async function initGlobe(container) {
         pins.forEach(p => {
             const phase = p.userData.basePhase + t * 1.4;
             const pulse = (Math.sin(phase) + 1) / 2;
-            p.userData.halo.material.opacity = pulse * 0.28;
-            const haloScale = 1 + pulse * 0.8;
+            p.userData.halo.material.opacity = 0.18 + pulse * 0.22;
+            const haloScale = 1 + pulse * 0.6;
             p.userData.halo.scale.set(haloScale, haloScale, haloScale);
             p.userData.beam.material.opacity = 0.3 + pulse * 0.3;
             if (p.userData.place.id === activePinId) {

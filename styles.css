@@ -337,9 +337,9 @@ body.is-magnetic .cursor-ring { border-color: var(--accent); }
    ============================================ */
 .hero-globe {
     position: relative;
-    width: min(720px, 92vw);
+    width: min(520px, 78vw);
     aspect-ratio: 1;
-    margin: 56px auto 0;
+    margin: 48px auto 0;
 }
 .hero-3d-fallback {
     position: absolute;
@@ -562,7 +562,7 @@ body.is-magnetic .cursor-ring { border-color: var(--accent); }
 /* ============================================
    Popup — anchored to active pin on the globe
    ============================================ */
-.globe-popup-wrap {
+.reatlas-popup-wrap {
     position: fixed;
     top: 0; left: 0;
     width: 340px;
@@ -571,9 +571,9 @@ body.is-magnetic .cursor-ring { border-color: var(--accent); }
     transition: opacity 0.2s ease;
     will-change: transform, opacity;
 }
-.globe-popup-wrap[hidden] { display: none; }
-.globe-popup-wrap > .reatlas-popup,
-.globe-popup-wrap > .popup-empty-card { pointer-events: auto; }
+.reatlas-popup-wrap[hidden] { display: none; }
+.reatlas-popup-wrap > .reatlas-popup,
+.reatlas-popup-wrap > .popup-empty-card { pointer-events: auto; }
 
 .reatlas-popup {
     width: 100%;
