@@ -34,8 +34,8 @@ async function initGlobe(container) {
     // SCENE
     // ============================================
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(36, width / height, 0.1, 1000);
-    camera.position.z = 3.0;
+    const camera = new THREE.PerspectiveCamera(34, width / height, 0.1, 1000);
+    camera.position.z = 3.4;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -191,6 +191,21 @@ async function initGlobe(container) {
         ctx.stroke();
     }
 
+    // Mask the south + north edge of the canvas with ocean so any
+    // polygons that touch lat=-90/90 don't draw a thick line at the
+    // canvas edge. This eliminates the visible "seam" at the south
+    // pole of the globe.
+    const edgeMask = ctx.createLinearGradient(0, TH - 24, 0, TH);
+    edgeMask.addColorStop(0, 'rgba(0,0,0,0)');
+    edgeMask.addColorStop(1, '#2a6e8f');
+    ctx.fillStyle = edgeMask;
+    ctx.fillRect(0, TH - 24, TW, 24);
+    const topMask = ctx.createLinearGradient(0, 0, 0, 24);
+    topMask.addColorStop(0, '#2a6e8f');
+    topMask.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = topMask;
+    ctx.fillRect(0, 0, TW, 24);
+
     // Use canvas as texture
     const earthTex = new THREE.CanvasTexture(canvas);
     earthTex.colorSpace = THREE.SRGBColorSpace;
@@ -228,24 +243,24 @@ async function initGlobe(container) {
 
         const dot = new THREE.Mesh(
             new THREE.SphereGeometry(0.018, 16, 16),
-            new THREE.MeshBasicMaterial({ color: 0xc5f900 })
+            new THREE.MeshBasicMaterial({ color: 0xef4444 })
         );
         pivot.add(dot);
 
         const halo = new THREE.Mesh(
             new THREE.SphereGeometry(0.04, 16, 16),
-            new THREE.MeshBasicMaterial({ color: 0xc5f900, transparent: true, opacity: 0, side: THREE.BackSide })
+            new THREE.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0, side: THREE.BackSide })
         );
         pivot.add(halo);
 
         const beamPts = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0.18)];
-        const beamMat = new THREE.LineBasicMaterial({ color: 0xc5f900, transparent: true, opacity: 0.5 });
+        const beamMat = new THREE.LineBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0.5 });
         const beam = new THREE.Line(new THREE.BufferGeometry().setFromPoints(beamPts), beamMat);
         pivot.add(beam);
 
         const cap = new THREE.Mesh(
             new THREE.SphereGeometry(0.012, 12, 12),
-            new THREE.MeshBasicMaterial({ color: 0xc5f900 })
+            new THREE.MeshBasicMaterial({ color: 0xef4444 })
         );
         cap.position.set(0, 0, 0.18);
         pivot.add(cap);
@@ -265,7 +280,7 @@ async function initGlobe(container) {
     let isDragging = false;
     let dragStart = { x: 0, y: 0 };
     let dragDelta = { x: 0, y: 0 };
-    let zoom = 3.0;
+    let zoom = 3.4;
 
     renderer.domElement.style.touchAction = 'none';
     renderer.domElement.style.cursor = 'grab';

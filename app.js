@@ -441,7 +441,12 @@ document.addEventListener('keydown', (e) => {
 urlPasteForm?.addEventListener('submit', (e) => {
     e.preventDefault();
     const raw = urlPasteInput.value.trim();
-    if (!raw) return;
+    if (!raw) {
+        urlPasteInput.focus();
+        urlPasteHint.innerHTML = `<span style="color:var(--accent-dark)">Type a Maps URL, pick a demo chip below, or paste a place ID.</span>`;
+        setTimeout(() => { urlPasteHint.innerHTML = ''; }, 4500);
+        return;
+    }
 
     // Smart-detect input format:
     //   1. Maps URL (https://…) or maps.app.goo.gl short link  →  ?url=
