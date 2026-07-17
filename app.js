@@ -499,7 +499,7 @@ document.querySelectorAll('.chip[data-place-id]').forEach(chip => {
 });
 
 // ============================================
-// Sync popup position to the active pin
+// Sync popup position to the active pin (or anchor to hero if no pin)
 // ============================================
 const heroContainer = () => document.getElementById('hero3d');
 
@@ -510,11 +510,11 @@ function syncPopupPosition() {
     }
     const activeId = window.GlobeAPI.getActivePinId?.();
     const showing = globePopup.style.display !== 'none';
-    if (!showing || !activeId) {
+    if (!showing) {
         requestAnimationFrame(syncPopupPosition);
         return;
     }
-    const pos = window.GlobeAPI.getPinScreenPos?.(activeId);
+    const pos = activeId ? window.GlobeAPI.getPinScreenPos?.(activeId) : null;
     const container = heroContainer();
     if (pos && container) {
         const cRect = container.getBoundingClientRect();
@@ -526,9 +526,15 @@ function syncPopupPosition() {
             const y = cRect.top + pos.y - 18;
             globePopup.style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
         }
+    } else if (container) {
+        // No active pin (URL paste for unknown place) — anchor centered above globe top
+        globePopup.style.opacity = '1';
+        const cRect = container.getBoundingClientRect();
+        const x = cRect.left + cRect.width / 2;
+        const y = cRect.top + 24;
+        globePopup.style.transform = `translate(${x}px, ${y}px) translate(-50%, 0)`;
     } else {
-        // Active but no screen pos yet — hide
-        globePopup.style.opacity = '0';
+        // No container yet — defer
     }
     requestAnimationFrame(syncPopupPosition);
 }
