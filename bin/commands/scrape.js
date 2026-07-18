@@ -11,11 +11,11 @@ const https = require('https');
 const { URL } = require('url');
 
 const ui = require('../../lib/ui.js');
-const { brand, apply, styles, icons, info, success, warn, fail, section, rule, Spinner, Progress } = ui;
+const { log, brand, apply, styles, icons, info, success, warn, fail, section, rule, Spinner, Progress } = ui;
 
 const cfg = {
     out: path.join(process.cwd(), 'output', 'reviews.json'),
-    parallelProxies: Number(process.env.PARALLEL_PROXIES || 2),
+    parallelProxies: process.env.PARALLEL_PROXIES ? Number(process.env.PARALLEL_PROXIES) : null,
     useApi: false,
 };
 
@@ -74,6 +74,19 @@ module.exports = async function scrape(args, ctx) {
         rule();
     }
 
+    // ---- Proxy availability check ----
+    const proxiesTxt = path.join(process.cwd(), 'proxies.txt');
+    const hasProxies = fs.existsSync(proxiesTxt);
+    if (!hasProxies && !api && cfg.parallelProxies === null) {
+        cfg.parallelProxies = 0;
+        if (!ctx.quiet) {
+            warn('No proxies.txt found — running direct (datacenter IPs are usually blocked by Google).');
+            warn('  For real use, add proxies via: echo "http://user:pass@host:port" > proxies.txt');
+        }
+    } else if (!hasProxies && !api && cfg.parallelProxies && cfg.parallelProxies > 0) {
+        if (!ctx.quiet) warn('proxies.txt not found but PARALLEL_PROXIES is set — falling back to direct.');
+    }
+
     // ---- Resolve short URL to get final URL + place name ----
     let resolvedUrl = url;
     if (url.includes('maps.app.goo.gl') || url.includes('goo.gl')) {
@@ -128,7 +141,11 @@ module.exports = async function scrape(args, ctx) {
     if (api) scrapeArgs.push('--analyze'); // chain analyze if requested
     else {
         if (fast) scrapeArgs.push('--fast');
-        if (cfg.parallelProxies > 0) scrapeArgs.push(`--parallel-proxies=${cfg.parallelProxies}`);
+        if (hasProxies && cfg.parallelProxies !== null && cfg.parallelProxies > 0) {
+            scrapeArgs.push(`--parallel-proxies=${cfg.parallelProxies}`);
+        } else if (!hasProxies) {
+            scrapeArgs.push('--no-proxy');
+        }
     }
 
     const spin = new Spinner(api ? 'Calling Places API…' : (headless ? 'Launching browser…' : 'Launching browser (headed)…'))
@@ -158,7 +175,19 @@ module.exports = async function scrape(args, ctx) {
             if (code !== 0) {
                 spin.stop(false, 'Scrape failed');
                 const err = new Error(`Scraper exited with code ${code}`);
-                err.hint = `Last lines of output:\n${(errOut || out).trim().split('\n').slice(-5).join('\n')}`;
+                const tail = (errOut || out).trim().split('\n').slice(-8).join('\n');
+                const hint = [
+                    tail,
+                    '',
+                    'Most likely cause: Google is blocking your IP (datacenter IPs hit consent screens or CAPTCHAs).',
+                    '',
+                    'Two ways forward:',
+                    '  1. Add residential proxies:   echo "http://user:pass@host:port" > proxies.txt',
+                    '  2. Use the official API:      npx reatlas scrape "URL" --api   (needs GOOGLE_PLACES_API_KEY in .env)',
+                    '',
+                    'The API path is free ($200/mo Google credit) and never gets blocked.',
+                ].join('\n');
+                err.hint = hint;
                 err.exitCode = code || 1;
                 return reject(err);
             }

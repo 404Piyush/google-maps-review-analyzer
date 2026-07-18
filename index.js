@@ -114,6 +114,14 @@ async function tryProxy(proxyDetails) {
                 if (!CONFIG.fast) await page.screenshot({ path: path.join(SCREENSHOTS_DIR, `captcha-${getTimestamp()}.png`) });
                 return { ok: false, reason: 'captcha' };
             }
+            const consentBtn = await page.$('button[aria-label*="Agree"], button[aria-label*="Accept"], form[action*="consent"] button');
+            if (consentBtn) {
+                log('Consent screen detected (datacenter IP without proxy)');
+                return { ok: false, reason: 'consent', hint: 'datacenter IP blocked by Google — add proxies or use --api mode' };
+            }
+            log('Reviews selector not found within timeout');
+            if (!CONFIG.fast) await page.screenshot({ path: path.join(SCREENSHOTS_DIR, `blocked-${getTimestamp()}.png`) });
+            return { ok: false, reason: 'blocked', hint: 'Google blocked the request — try proxies or --api mode' };
         }
 
         log(`Page settled. Waiting ${CONFIG.navSettleMs}ms.`);
@@ -269,7 +277,7 @@ async function scrape(url, options = {}) {
     if (result.ok) {
         return { ok: true, count: result.count, source: 'live', elapsedMs: Date.now() - t0 };
     }
-    return { ok: false, reason: result.reason };
+    return { ok: false, reason: result.reason, hint: result.hint, place_name: result.place_name };
 }
 
 module.exports = { scrape, loadCache, saveCache, CONFIG: DEFAULT_CONFIG };
