@@ -25,15 +25,13 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 WORKDIR /app
 
-# Install only production deps. Treat puppeteer* as required here so npm install runs them.
+# Install only prod deps. With --omit=dev, npm still installs optionalDependencies
+# unless --omit=optional is also passed; --include=optional is defensive in case
+# a parent image or env forces omit=optional globally.
 COPY package.json package-lock.json* ./
 ENV npm_config_production=false
 
-# Force puppeteer to actually install even though it's in optionalDependencies by default.
-RUN npm pkg delete optionalDependencies.puppeteer && \
-    npm pkg delete optionalDependencies."puppeteer-extra" && \
-    npm pkg delete optionalDependencies."puppeteer-extra-plugin-stealth" && \
-    npm install --omit=dev --no-audit --no-fund
+RUN npm install --omit=dev --include=optional --no-audit --no-fund
 
 COPY . .
 
