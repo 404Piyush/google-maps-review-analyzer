@@ -1,6 +1,7 @@
-require('dotenv').config();
+require('dotenv').config({ override: true });
 const axios = require('axios');
-const fs = require('fs').promises;
+const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
 const { detectGPU } = require('./lib/hardware-detect');
 
@@ -102,11 +103,19 @@ async function analyzeBatch(batch, model) {
         }
     }
     try {
-        const raw = await callLLM(buildBatchPrompt(batch), { model, jsonFormat: true });
-        const parsed = JSON.parse(raw);
+        const raw = await callLLM(buildBatchPrompt(batch), { model, jsonFormat: false });
+        let parsed;
+        try {
+            parsed = JSON.parse(raw);
+        } catch {
+            const m = raw.match(/\[[\s\S]*\]/);
+            if (m) parsed = JSON.parse(m[0]); else throw new Error('no JSON array in response');
+        }
+        const arr = Array.isArray(parsed) ? parsed : (Array.isArray(parsed.results) ? parsed.results : null);
+        if (!arr) throw new Error('expected JSON array');
         return batch.map((r, i) => ({
             ...r,
-            analysis: parsed[i] || { topics: ['Error'], sentiment: 'unknown' },
+            analysis: arr[i] || { topics: ['Error'], sentiment: 'unknown' },
         }));
     } catch (e) {
         console.warn(`Batch parse failed (${batch.length} reviews), falling back to single-item: ${e.message}`);
@@ -234,7 +243,7 @@ async function main() {
 
     let reviews;
     try {
-        const raw = await fs.readFile(CONFIG.inputFile, 'utf8');
+        const raw = await fsp.readFile(CONFIG.inputFile, 'utf8');
         reviews = JSON.parse(raw);
     } catch (e) {
         console.error(`Cannot read ${CONFIG.inputFile}: ${e.message}`);
@@ -248,7 +257,7 @@ async function main() {
     let analyzed = [];
     if (fs.existsSync(CONFIG.intermediateFile) && !HAS('force')) {
         try {
-            analyzed = JSON.parse(await fs.readFile(CONFIG.intermediateFile, 'utf8'));
+            analyzed = JSON.parse(await fsp.readFile(CONFIG.intermediateFile, 'utf8'));
             console.log(`Resumed ${analyzed.length} reviews from ${CONFIG.intermediateFile}`);
         } catch {}
     }
@@ -259,13 +268,13 @@ async function main() {
         const fresh = await analyzeAll(remaining, model, concurrency);
         analyzed = analyzed.concat(fresh);
         if (!fs.existsSync(path.dirname(CONFIG.intermediateFile))) await fs.mkdir(path.dirname(CONFIG.intermediateFile), { recursive: true });
-        await fs.writeFile(CONFIG.intermediateFile, JSON.stringify(analyzed, null, 2));
+        await fsp.writeFile(CONFIG.intermediateFile, JSON.stringify(analyzed, null, 2));
     }
 
     console.log(`Phase 2: generating final report with ${MODELS[CONFIG.tier]?.report || model}`);
     if (!fs.existsSync(path.dirname(CONFIG.reportFile))) await fs.mkdir(path.dirname(CONFIG.reportFile), { recursive: true });
     const report = await generateReport(analyzed, MODELS[CONFIG.tier]?.report || model);
-    await fs.writeFile(CONFIG.reportFile, report, 'utf8');
+    await fsp.writeFile(CONFIG.reportFile, report, 'utf8');
 
     const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
     console.log(`\nDone in ${elapsed}s — report: ${CONFIG.reportFile}`);

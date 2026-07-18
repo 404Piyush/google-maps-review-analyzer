@@ -7,9 +7,10 @@
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
+require('dotenv').config({ override: true });
 
 const ui = require('../../lib/ui.js');
-const { apply, styles, icons, info, success, section, rule, Spinner, Progress } = ui;
+const { log, apply, styles, icons, info, success, section, rule, Spinner, Progress } = ui;
 
 function parseFlags(args) {
     const out = { file: null, model: 'balanced', provider: null, output: null };
@@ -100,7 +101,7 @@ module.exports = async function analyze(args, ctx) {
             spin.stop(true, 'Analysis complete');
 
             // Locate output report
-            const reportPath = output || path.join(process.cwd(), 'output', 'executive-report.md');
+            const reportPath = output || path.join(process.cwd(), 'output', 'analysis-report.md');
             let reportLines = 0;
             if (fs.existsSync(reportPath)) {
                 reportLines = fs.readFileSync(reportPath, 'utf8').split('\n').length;

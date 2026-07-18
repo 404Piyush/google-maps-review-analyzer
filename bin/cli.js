@@ -62,7 +62,7 @@ if (flags.has('--no-color')) process.env.NO_COLOR = '1';
 const positional = argv.filter(a => !a.startsWith('--') && !a.startsWith('-'));
 
 const cmd = positional[0];
-const rest = positional.slice(1);
+const rest = argv.slice(argv.indexOf(cmd) + 1);
 
 const commands = {
     scrape: require('./commands/scrape'),
