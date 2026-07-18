@@ -25,9 +25,11 @@
 
 </div>
 
-> **🚀 What's new in v1.6.0:** Headless scraper microservice. `index.js` now exports a `scrape(url, options)` function that's wrapped by `scraper-server.js` (Express) and packaged in `Dockerfile` for one-click deploy to Render / Fly.io / any Docker host. Add `SCRAPER_URL` to your Vercel env vars and the hosted demo will forward cache-miss URLs to your scraper service in real time.
+> **☁️ What's new in v1.7.0:** Oracle Cloud Always Free deploy. `oracle/bootstrap.sh` provisions a 2-OCPU + 12 GB ARM Ampere VM, builds the Docker image, and starts the scraper — all in ~5 min, $0/mo forever, no cold starts. Card is required at signup but never charged. Full guide in [`oracle/README.md`](oracle/README.md).
 >
-> 🎨 v1.3.0: Editorial redesign of the demo page (cream + ink + acid green, Fraunces serif, D3.js viz, Three.js wireframe, custom cursor, magnetic buttons, 3D tilt).
+> 🚀 v1.6.0: Headless scraper microservice. `index.js` exports `scrape(url, opts)`, wrapped by `scraper-server.js` (Express) + Dockerfile. Wire `SCRAPER_URL` to Vercel and the hosted demo forwards cache-miss URLs to your scraper in real time.
+>
+> 🎨 v1.3.0: Editorial redesign of the demo page.
 
 ---
 
@@ -256,37 +258,61 @@ google-maps-review-analyzer/
 
 ## ☁️ Deploying the scraper as a service
 
-The Puppeteer scraper needs Chromium, so it can't run on Vercel's serverless tier. Use `scraper-server.js` + `Dockerfile` + `render.yaml` to run it on any Docker host.
+The Puppeteer scraper needs Chromium, so it can't run on Vercel's serverless tier. Pick one:
 
-**Render.com (recommended, free tier)**
+### Oracle Cloud Always Free (recommended) — **$0/mo, no cold starts**
 
-1. Fork this repo to your GitHub account.
-2. In the Render dashboard, click *New → Blueprint* and point it at your fork. Render reads `render.yaml` automatically.
-3. Wait ~3 min for the first build. The service URL is shown in the dashboard (e.g. `https://gmaps-scraper.onrender.com`).
+2 OCPUs + 12 GB RAM ARM Ampere VM, free forever. The script in `oracle/bootstrap.sh` does everything in one shot.
 
-**Self-host on any VPS / Docker host**
+Full guide: **[`oracle/README.md`](oracle/README.md)** — covers signup (card is required for identity verification but never charged), home region choice, VCN setup, Ampere A1.Flex shape, and how to wire the resulting URL into Vercel.
+
+TL;DR:
+
+```text
+1. Sign up at https://cloud.oracle.com/free (home region matters; cannot change later)
+2. Create a VCN (or use the default one created during signup)
+3. Compute → Create Instance:
+     Image: Canonical Ubuntu 22.04 (aarch64)
+     Shape: VM.Standard.A1.Flex → 2 OCPU, 12 GB RAM
+     Assign public IPv4
+     Cloud-init script: paste contents of oracle/bootstrap.sh
+4. Wait ~5 min. Script prints SCRAPER_URL + SCRAPER_API_KEY to console output.
+5. vercel env add SCRAPER_URL production        → http://<oracle-public-ip>
+   vercel env add SCRAPER_API_KEY production    → (key from step 4)
+   vercel deploy --yes --prod
+```
+
+### Render.com / Fly.io / any Docker host — alternatives
+
+The repo also ships:
+
+- **`Dockerfile`** — ARM64/AMD64 with system Chromium + all puppeteer-extra runtime deps
+- **`render.yaml`** — one-click Render Blueprint (works on free tier; subject to 15min idle spin-down)
+- **`scraper-server.js`** — Express service exposing `/health` and `/scrape`
+
+For any Docker host:
 
 ```bash
 docker build -t gmaps-scraper .
 docker run -p 8080:8080 -e SCRAPER_API_KEY=changeme gmaps-scraper
 ```
 
-**Endpoints**
+### Endpoints
 
-| Method | Path              | Notes                                                          |
-| ------ | ----------------- | -------------------------------------------------------------- |
-| GET    | `/health`         | Liveness + last scrape result, JSON.                           |
-| GET    | `/scrape?url=...` | NDJSON stream: `meta` → N×`batch` → `done` \| `error`.         |
-| GET    | `/scrape?url=...&key=...` | Pass `key` only if `SCRAPER_API_KEY` is set on the server. |
+| Method | Path                    | Notes                                                          |
+| ------ | ----------------------- | -------------------------------------------------------------- |
+| GET    | `/health`               | Liveness + last scrape result, JSON.                           |
+| GET    | `/scrape?url=...`       | NDJSON stream: `meta` → N×`batch` → `done` \| `error`.         |
+| GET    | `/scrape?url=...&key=...` | Pass `key` only if `SCRAPER_API_KEY` is set on the server.    |
 
-**Hook the live demo to your scraper**
+### Hook the live demo to your scraper
 
 The hosted demo at `repo-dun-six.vercel.app` reads two env vars to decide what to do on a cache miss:
 
-| Env var           | Effect                                                    |
-| ----------------- | --------------------------------------------------------- |
-| `SCRAPER_URL`     | Set to `https://gmaps-scraper.onrender.com` (or your own) |
-| `SCRAPER_API_KEY` | Optional shared secret; must match the scraper service    |
+| Env var           | Effect                                                          |
+| ----------------- | --------------------------------------------------------------- |
+| `SCRAPER_URL`     | URL of the scraper service (e.g. `http://129.146.x.x` or `https://gmaps-scraper.onrender.com`) |
+| `SCRAPER_API_KEY` | Optional shared secret; must match the scraper service          |
 
 When both are set, any URL the user pastes that isn't already cached in `cache/reviews/<slug>.json` is forwarded to the scraper service and streamed back to the browser. No frontend changes needed.
 

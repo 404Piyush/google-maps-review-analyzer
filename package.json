@@ -1,7 +1,7 @@
 {
   "name": "google-maps-review-analyzer",
-  "version": "1.6.0",
-  "description": "Stealth-scrape Google Maps reviews via Puppeteer + proxy rotation OR pull via Places API, then generate an executive-grade sentiment report using local Ollama LLMs or OpenRouter free models. Includes a Dockerized scraper HTTP backend deployable to Render.",
+  "version": "1.7.0",
+  "description": "Stealth-scrape Google Maps reviews via Puppeteer + proxy rotation OR pull via Places API, then generate an executive-grade sentiment report using local Ollama LLMs or OpenRouter free models. Includes a Dockerized scraper microservice with one-shot bootstrap for Oracle Cloud Always Free (2 OCPU + 12 GB ARM, $0/mo, no cold starts).",
   "main": "index.js",
   "bin": {
     "reatlas": "./bin/cli.js",
