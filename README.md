@@ -21,11 +21,10 @@
 
 [![Live Demo](https://img.shields.io/badge/🚀_Live_Demo-0a0a0a?style=for-the-badge)](https://repo-dun-six.vercel.app)
 [![Colab](https://img.shields.io/badge/▶_Open_in_Colab-F9AB00?style=for-the-badge&logo=googlecolab&logoColor=white)](https://github.com/404Piyush/google-maps-review-analyzer/blob/main/notebooks/colab.ipynb)
-[![Lightning AI](https://img.shields.io/badge/⚡_Lightning_AI-792EE5?style=for-the-badge)](https://github.com/404Piyush/google-maps-review-analyzer/blob/main/notebooks/lightning-ai.md)
 
 </div>
 
-> **☁️ What's new in v1.7.0:** Oracle Cloud Always Free deploy. `oracle/bootstrap.sh` provisions a 2-OCPU + 12 GB ARM Ampere VM, builds the Docker image, and starts the scraper — all in ~5 min, $0/mo forever, no cold starts. Card is required at signup but never charged. Full guide in [`oracle/README.md`](oracle/README.md).
+> **☁️ What's new in v1.7.0:** Docker scraper microservice deployed on Render free tier. `Dockerfile` + `render.yaml` build the Chromium image and start the scraper behind `SCRAPER_URL` — Vercel's `/api/scrape` auto-proxies cache misses to it.
 >
 > 🚀 v1.6.0: Headless scraper microservice. `index.js` exports `scrape(url, opts)`, wrapped by `scraper-server.js` (Express) + Dockerfile. Wire `SCRAPER_URL` to Vercel and the hosted demo forwards cache-miss URLs to your scraper in real time.
 >
@@ -55,7 +54,6 @@ No cloud APIs. No data leaves your machine. The LLM runs locally via [Ollama](ht
 - 🔁 **Proxy rotation** — Cycles through `proxies.txt`; on CAPTCHA it screenshots the page, moves to the next proxy, and retries.
 - 📜 **Dynamic scrolling** — Auto-scrolls the reviews pane until the height stabilizes (no fragile "scroll N times" magic numbers).
 - 🧠 **Two-pass LLM analysis** — Fast `gemma2:2b` extracts topics + per-review sentiment in parallel; heavier `qwen3:8b` writes the executive summary.
-- 📊 **Keyword sentiment (offline)** — `analyze.js` ships as a zero-dependency fallback that does basic positive/negative scoring without Ollama.
 - 📝 **Structured Markdown report** — Executive summary, sentiment breakdown, top-10 topic table, "what's working" / "areas to improve" sections, actionable recommendations.
 - 💾 **Checkpointed intermediate output** — `intermediate-analysis.json` is written after Phase 1 so you can re-run only the report step.
 
@@ -82,7 +80,6 @@ No cloud APIs. No data leaves your machine. The LLM runs locally via [Ollama](ht
     │                     Phase 2: qwen3:8b  → executive markdown       │
     │                     →  intermediate-analysis.json                 │
     │                     →  analysis-report.md                         │
-    │   analyze.js         offline keyword baseline (no LLM)            │
     └──────────────────────────────────────────────────────────────────┘
                                   │
                                   ▼
@@ -107,11 +104,14 @@ Full module-by-module breakdown, deployment topology, and data flow → **[ARCHI
 | What | Why |
 |---|---|
 | **Node.js 18+** | Runs the scraper |
-| **Puppeteer Chromium** | Pulled automatically via `npm install` (~170 MB) |
-| **Ollama** *(optional, recommended)* | Local LLM for the report stage — get it at <https://ollama.com> |
-| **Proxies** *(required for real use)* | Residential or mobile proxies; the scraper cannot bypass Google's defenses from a datacenter IP |
+| **Puppeteer Chromium** | Pulled automatically via `npm install` (~170 MB, optional dep) |
+| **OpenRouter API key** | For cloud LLM analysis — free models at <https://openrouter.ai> |
+| **Ollama** *(optional)* | Local LLM alternative — get it at <https://ollama.com> |
+| **Proxies** *(required for real scraping)* | Residential or mobile; datacenter IPs hit Google CAPTCHAs |
 
-### Install
+### Install the CLI
+
+The `reatlas` CLI wraps `node index.js --url=…`, `topic-analysis.js`, and the demo server into one binary.
 
 ```bash
 git clone https://github.com/404Piyush/google-maps-review-analyzer.git
@@ -121,17 +121,73 @@ npm install
 
 ### Configure
 
-Create `proxies.txt` in the project root (one per line):
+```bash
+# 1. Create .env from the template (prompts you for the OpenRouter key)
+npx reatlas init
+
+# OR write .env yourself:
+cp .env.example .env
+# then edit .env and paste: OPENROUTER_API_KEY=sk-or-v1-…
+```
+
+Create `proxies.txt` in the project root, one proxy per line:
 
 ```
 http://user:pass@residential.proxy-a.com:8080
-http://user:pass@residential.proxy-b.com:8080
-http://user:pass@mobile.proxy-c.com:3128
+http://user:pass@mobile.proxy-b.com:3128
 ```
 
-> ⚠️ `proxies.txt` is gitignored. Datacenter proxies will hit CAPTCHAs almost immediately — use residential or mobile.
+> ⚠️ `proxies.txt` is gitignored. Skip this only for cached demo data — real Maps URLs need residential or mobile proxies.
 
-### Run the full pipeline
+### Verify the install
+
+```bash
+npx reatlas doctor          # ✓ Node, deps, .env, browser, OpenRouter key
+npx reatlas version         # 1.7.0
+```
+
+### Use it
+
+```bash
+# Try it on cached demo data first (no proxy needed)
+npx reatlas analyze cache/reviews/pujol.json --provider=openrouter --model=fast
+
+# Scrape a real Maps URL (needs proxies.txt)
+npx reatlas scrape "https://maps.app.goo.gl/4GYEAoyVke1oCgyv5"
+
+# Scrape + analyze in one shot
+npx reatlas run "https://maps.app.goo.gl/4GYEAoyVke1oCgyv5" --provider=openrouter --model=balanced
+
+# Launch the 3D globe demo locally
+npx reatlas globe           # → http://localhost:3777
+```
+
+### CLI reference
+
+```text
+reatlas <command> [options]
+
+Commands:
+  scrape <url>     Scrape reviews → output/reviews.json
+  analyze <file>   Run LLM analysis on an existing reviews.json
+                    (auto-detects {reviews:[…]} wrapper or flat array)
+  run <url>        scrape + analyze in one shot
+  globe            Launch the 3D globe demo at http://localhost:3777
+  doctor           Check Node, deps, .env, browser, LLM keys
+  init             Create .env from template
+  version          Print version
+
+Global flags:
+  --provider=openrouter|ollama   (default: ollama, or OPENROUTER_API_KEY auto-selects openrouter)
+  --model=fast|balanced|deep      (default: balanced)
+  --quiet                         (progress UI off)
+  --json                          (machine-readable output on stdout)
+  --no-color
+```
+
+### Run the full pipeline (raw `node` form)
+
+If you prefer to bypass the CLI:
 
 ```bash
 # Option A: stealth scraper (needs proxies.txt)
@@ -140,8 +196,8 @@ node index.js --parallel-proxies=2
 # Option B: Google Places API (needs GOOGLE_PLACES_API_KEY in .env)
 node places-api.js --text-search="Joe's Pizza Manhattan" --analyze
 
-# Single combined command (v1.2.0+)
-node index.js --analyze            # scrapes then runs analysis
+# Option C: scrape + analyze in one shot
+node index.js --analyze
 ```
 
 `index.js` accepts env vars or flags. Common ones:
@@ -169,9 +225,6 @@ node topic-analysis.js --model=deep           # qwen3:8b for both phases
 
 # OpenRouter free hosted models (no GPU needed)
 OPENROUTER_API_KEY=sk-or-... node topic-analysis.js --provider=openrouter --model=fast
-
-# Offline keyword-only fallback
-node analyze.js
 ```
 
 ---
@@ -234,61 +287,62 @@ ollama pull qwen3:8b
 
 ```
 google-maps-review-analyzer/
+├── bin/
+│   ├── cli.js                # `reatlas` CLI entry point
+│   └── commands/             # scrape · analyze · run · globe · doctor · init
 ├── index.js                  # Stage 1 — stealth scraper (also exports scrape() fn)
-├── scraper-server.js         # Stage 1 service — Express wrapper around index.js for cloud deploys
-├── analyze.js                # Stage 2 alt — offline keyword sentiment
-├── topic-analysis.js         # Stage 2/3 — Ollama two-pass report
+├── scraper-server.js         # Stage 1 service — Express wrapper around index.js
+├── topic-analysis.js         # Stage 2/3 — Two-pass LLM analysis
 ├── places-api.js             # Stage 1 alt — Google Places API (no Puppeteer)
 ├── api/                      # Vercel serverless endpoints
 │   ├── scrape.js             # /api/scrape (cache → optional proxy to scraper-server)
 │   └── analyze.js            # /api/analyze (OpenRouter streaming)
 ├── dev-server.js             # Local web demo server
+├── lib/                      # CLI helpers (ANSI UI, GPU detection)
 ├── Dockerfile                # Container image for scraper-server (Chromium + Node)
 ├── render.yaml               # One-click deploy to Render.com free tier
 ├── proxies.txt               # (you create this — gitignored)
 ├── package.json
-├── .gitignore
-├── reviews.json              # generated
-├── reviews.html              # generated
-├── intermediate-analysis.json# generated
-└── analysis-report.md        # generated — the deliverable
+├── .env.example              # Copy → .env, then add OPENROUTER_API_KEY
+├── output/
+│   ├── reviews.json          # generated by scrape
+│   ├── intermediate-analysis.json   # generated by topic-analysis Phase 1
+│   └── analysis-report.md    # generated — the deliverable
 ```
 
 ---
 
 ## ☁️ Deploying the scraper as a service
 
-The Puppeteer scraper needs Chromium, so it can't run on Vercel's serverless tier. Pick one:
+The Puppeteer scraper needs Chromium, so it can't run on Vercel's serverless tier.
 
-### Oracle Cloud Always Free (recommended) — **$0/mo, no cold starts**
+### Render.com (recommended) — **Free tier, one-click Blueprint**
 
-2 OCPUs + 12 GB RAM ARM Ampere VM, free forever. The script in `oracle/bootstrap.sh` does everything in one shot.
+The repo ships a `render.yaml` that builds the Docker image and deploys the scraper with zero config:
 
-Full guide: **[`oracle/README.md`](oracle/README.md)** — covers signup (card is required for identity verification but never charged), home region choice, VCN setup, Ampere A1.Flex shape, and how to wire the resulting URL into Vercel.
+1. Sign in at <https://render.com> → **New +** → **Blueprint**
+2. Connect your fork of `google-maps-review-analyzer`
+3. Render auto-detects `render.yaml`, click **Apply**
+4. After build (~5–7 min), copy the URL from the dashboard (e.g. `https://gmaps-scraper.onrender.com`)
+5. Copy the auto-generated `SCRAPER_API_KEY` from the Environment tab
 
-TL;DR:
+Wire those into Vercel:
 
-```text
-1. Sign up at https://cloud.oracle.com/free (home region matters; cannot change later)
-2. Create a VCN (or use the default one created during signup)
-3. Compute → Create Instance:
-     Image: Canonical Ubuntu 22.04 (aarch64)
-     Shape: VM.Standard.A1.Flex → 2 OCPU, 12 GB RAM
-     Assign public IPv4
-     Cloud-init script: paste contents of oracle/bootstrap.sh
-4. Wait ~5 min. Script prints SCRAPER_URL + SCRAPER_API_KEY to console output.
-5. vercel env add SCRAPER_URL production        → http://<oracle-public-ip>
-   vercel env add SCRAPER_API_KEY production    → (key from step 4)
-   vercel deploy --yes --prod
+```bash
+vercel env add SCRAPER_URL     production   # https://gmaps-scraper.onrender.com
+vercel env add SCRAPER_API_KEY production   # paste the key
+vercel deploy --yes --prod
 ```
 
-### Render.com / Fly.io / any Docker host — alternatives
+Vercel's `/api/scrape` will now forward any cache-miss URL to your Render service.
 
-The repo also ships:
+### Any Docker host — Fly.io, Railway, your own VPS
 
-- **`Dockerfile`** — ARM64/AMD64 with system Chromium + all puppeteer-extra runtime deps
-- **`render.yaml`** — one-click Render Blueprint (works on free tier; subject to 15min idle spin-down)
-- **`scraper-server.js`** — Express service exposing `/health` and `/scrape`
+The same `Dockerfile` + `scraper-server.js` works on any container host. The container:
+
+- Listens on `PORT` (default `8080`)
+- Exposes `GET /health` and `GET /scrape?url=…` (NDJSON stream)
+- Requires `SCRAPER_API_KEY` env var to enable auth (recommended)
 
 For any Docker host:
 
@@ -337,7 +391,7 @@ This repository is a **technical demonstration** of public-page scraping and on-
 - Google's [Terms of Service](https://policies.google.com/terms) prohibit automated access to most of Maps' content. The official [Places API](https://developers.google.com/maps/documentation/places/web-service/overview) is the supported way to get review data at scale.
 - Scraping personal data (reviewer names + content) may fall under GDPR / CCPA depending on jurisdiction. Pseudonymize before publishing any analysis.
 - Use residential/mobile proxies, respect `robots.txt` where applicable, don't hammer the endpoint, and store results securely.
-- The bundled `reCAPTCHA v2 Bypass with Capsolver_.txt` is a **third-party service reference** retained from the original implementation. Running automated CAPTCHA bypass against Google Maps is almost certainly a ToS violation; remove it if you intend to run the tool in production.
+- Don't run automated CAPTCHA bypass against Google Maps — that's a ToS violation and a fast way to get your IP permanently banned.
 
 This repo is for **educational use**. The author is not responsible for misuse.
 

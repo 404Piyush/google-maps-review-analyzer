@@ -21,7 +21,7 @@ module.exports = async function doctor(args, ctx) {
     else { fail(`Node ${nodeVer} — need >= 18`); allOk = false; }
 
     // ---- Required scripts present ----
-    const required = ['index.js', 'places-api.js', 'topic-analysis.js', 'analyze.js', 'package.json'];
+    const required = ['index.js', 'places-api.js', 'topic-analysis.js', 'package.json'];
     for (const f of required) {
         const ok = fs.existsSync(path.join(process.cwd(), f));
         if (ok) success(`${f} present`);

@@ -19,9 +19,9 @@ End-to-end view of how Google Maps Review Analyzer fits together — from a publ
         ┌───────────────┐           ┌──────────────────┐         ┌──────────────────┐
         │  SCRAPER      │           │  FRONTEND        │         │  ANALYZER        │
         │  index.js     │           │  index.html      │         │  topic-analysis  │
-        │  places-api   │           │  app.js          │         │  analyze.js      │
-        │  (Node CLI)   │           │  interactive.js  │         │  openrouter-     │
-        │               │           │  live.js         │         │  analyzer.js     │
+        │  places-api   │           │  app.js          │         │  openrouter-     │
+        │  (Node CLI)   │           │  interactive.js  │         │  analyzer.js     │
+        │               │           │  live.js         │         │                 │
         └───────┬───────┘           └────────┬─────────┘         └────────┬─────────┘
                 │                            │                            │
                 │ writes                     │ fetches                    │ reads
@@ -61,14 +61,13 @@ node index.js              # scrape mode
 node places-api.js         # API mode
 ```
 
-### Tier 2 — Analysis (`topic-analysis.js`, `analyze.js`, `lib/*`)
+### Tier 2 — Analysis (`topic-analysis.js`, `lib/*`)
 
 **Purpose:** Turn raw reviews into structured insights + an executive report.
 
 - `topic-analysis.js` — Two-phase LLM pipeline:
   - **Phase 1:** per-review topic + sentiment extraction (batched, parallel)
   - **Phase 2:** synthesis into executive markdown report
-- `analyze.js` — offline keyword-based sentiment (zero-LLM fallback)
 - `lib/hardware-detect.js` — auto-detects GPU (Apple Silicon Metal, NVIDIA CUDA, or CPU fallback)
 - `lib/openrouter-analyzer.js` — OpenRouter adapter for free hosted models
 
@@ -80,7 +79,6 @@ node places-api.js         # API mode
 **Run:**
 ```bash
 node topic-analysis.js     # LLM-powered (Ollama / OpenRouter)
-node analyze.js            # offline baseline
 gmaps-analyzer analyze     # via CLI wrapper
 ```
 
@@ -149,7 +147,6 @@ repo/
 ├── index.js                    # Tier 1: puppeteer scraper
 ├── places-api.js               # Tier 1: Google Places API path
 ├── topic-analysis.js           # Tier 2: LLM pipeline (Phases 1 + 2)
-├── analyze.js                  # Tier 2: offline keyword baseline
 ├── lib/
 │   ├── hardware-detect.js      # GPU/CPU auto-detection
 │   └── openrouter-analyzer.js  # OpenRouter adapter

@@ -45,7 +45,13 @@ module.exports = async function analyze(args, ctx) {
     let reviews = [];
     try {
         reviews = JSON.parse(fs.readFileSync(file, 'utf8'));
-        if (!Array.isArray(reviews)) throw new Error('expected JSON array');
+        if (!Array.isArray(reviews)) {
+            if (Array.isArray(reviews.reviews)) {
+                reviews = reviews.reviews;
+            } else {
+                throw new Error('expected JSON array (or object with .reviews array)');
+            }
+        }
     } catch (e) {
         const err = new Error(`Invalid reviews.json: ${e.message}`);
         err.exitCode = 1;

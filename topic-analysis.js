@@ -245,6 +245,11 @@ async function main() {
     try {
         const raw = await fsp.readFile(CONFIG.inputFile, 'utf8');
         reviews = JSON.parse(raw);
+        if (!Array.isArray(reviews) && Array.isArray(reviews?.reviews)) reviews = reviews.reviews;
+        if (!Array.isArray(reviews)) {
+            console.error(`Expected a JSON array (or {reviews:[…]}) in ${CONFIG.inputFile}`);
+            process.exit(1);
+        }
     } catch (e) {
         console.error(`Cannot read ${CONFIG.inputFile}: ${e.message}`);
         process.exit(1);

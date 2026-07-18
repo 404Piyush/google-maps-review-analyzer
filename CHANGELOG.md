@@ -65,7 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`places-api.js`** — Google Places API path (no proxies, no CAPTCHA). Outputs the same `reviews.json` schema. $200/mo free credit covers most hobbyists.
 - **`bin/cli.js`** — `gmaps-analyzer` CLI with subcommands: `scrape`, `scrape:api`, `analyze`, `demo`, `version`
 - **`demo/`** — Static showcase page (Vercel-compatible) with sample report + Chart.js visualizations + `vercel.json` for one-click deploy
-- **Notebooks** — `notebooks/colab.ipynb` (free T4 GPU one-click run) + `notebooks/lightning-ai.md` (Lightning AI Studios free GPU guide)
+- **Notebooks** — `notebooks/colab.ipynb` (free T4 GPU one-click run)
 - **GitHub polish** — Issue templates (bug/feature), PR template, Dependabot config, CI workflow, Release workflow, `SECURITY.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `FUNDING.yml`
 - **Tests** — `npm test` runs `node:test` unit suite for topic-analysis aggregation and hardware detection
 - `dotenv` and `express` as runtime dependencies (express is for the demo server)
@@ -80,5 +80,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release: `index.js` stealth scraper with proxy rotation
 - `topic-analysis.js` two-pass Ollama report generator (gemma2:2b → qwen3:8b)
-- `analyze.js` zero-dependency keyword-based sentiment fallback
 - `proxies.txt` template + `.gitignore` for runtime outputs
