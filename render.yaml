@@ -4,7 +4,7 @@ services:
     runtime: docker
     plan: free
     region: oregon
-    dockerfilePath: ./Dockerfile.gosom
+    dockerfilePath: ./Dockerfile
     disk:
       name: data
       mountPath: /data
