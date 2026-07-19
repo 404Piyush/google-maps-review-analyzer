@@ -112,32 +112,41 @@ def scrape():
             })
 
             with GoogleMapsScraper(debug=False) as scraper:
-                scraper.sort_by(resolved, 1)  # 1 = newest
-                fetched = 0
-                while fetched < n:
-                    reviews = scraper.get_reviews(fetched)
-                    if not reviews:
-                        break
-                    batch = []
-                    for r in reviews:
-                        row = {
-                            "name": r.get("username") or "Anonymous",
-                            "time": r.get("relative_date") or "",
-                            "stars": r.get("rating") or 0,
-                            "text": r.get("caption") or "",
-                        }
-                        batch.append(row)
-                        collected.append(row)
-                    if batch:
-                        yield ndjson({
-                            "type": "batch",
-                            "count": len(batch),
-                            "scraped": min(fetched + len(batch), n),
-                            "total": n,
-                            "reviews": batch,
-                        })
-                        time.sleep(0.05)
-                    fetched += len(reviews)
+                sort_err = scraper.sort_by(resolved, 1)  # 1 = newest
+                yield ndjson({
+                    "type": "progress",
+                    "stage": "sort",
+                    "ok": sort_err != -1,
+                    "sort_err": sort_err,
+                })
+                if sort_err == -1:
+                    error_msg = "sort_by failed (couldn't click Sort dropdown — Google may have blocked)"
+                else:
+                    fetched = 0
+                    while fetched < n:
+                        reviews = scraper.get_reviews(fetched)
+                        if not reviews:
+                            break
+                        batch = []
+                        for r in reviews:
+                            row = {
+                                "name": r.get("username") or "Anonymous",
+                                "time": r.get("relative_date") or "",
+                                "stars": r.get("rating") or 0,
+                                "text": r.get("caption") or "",
+                            }
+                            batch.append(row)
+                            collected.append(row)
+                        if batch:
+                            yield ndjson({
+                                "type": "batch",
+                                "count": len(batch),
+                                "scraped": min(fetched + len(batch), n),
+                                "total": n,
+                                "reviews": batch,
+                            })
+                            time.sleep(0.05)
+                        fetched += len(reviews)
 
         except Exception as e:
             error_msg = str(e)
