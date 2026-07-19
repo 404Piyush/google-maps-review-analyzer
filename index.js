@@ -4,6 +4,9 @@ const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const fs = require('fs');
 const fsp = require('fs').promises;
 const path = require('path');
+const http = require('http');
+const https = require('https');
+const { URL: NodeURL } = require('url');
 const { devices } = require('puppeteer');
 
 puppeteer.use(StealthPlugin());
@@ -59,6 +62,35 @@ function loadProxies() {
     if (CONFIG.skipProxy) return [];
     if (!fs.existsSync(CONFIG.proxyFile)) return [];
     return fs.readFileSync(CONFIG.proxyFile, 'utf-8').split(/\r?\n/).filter(Boolean).map(parseProxy).filter(Boolean);
+}
+
+async function probeProxyAuth(proxy, timeoutMs = 10000) {
+    // Issue a CONNECT through the proxy to a benign URL just to verify auth works.
+    // This avoids launching Chromium with a broken proxy.
+    return new Promise((resolve) => {
+        let settled = false;
+        const finish = (ok, reason) => { if (!settled) { settled = true; resolve({ ok, reason }); } };
+        const timer = setTimeout(() => finish(false, 'timeout'), timeoutMs);
+        try {
+            const u = new NodeURL(proxy.server);
+            const auth = proxy.username ? `${proxy.username}:${proxy.password}` : '';
+            const headers = { Host: 'www.google.com:443', 'User-Agent': 'proxy-probe/1.0', 'Proxy-Connection': 'Keep-Alive' };
+            if (auth) headers['Proxy-Authorization'] = 'Basic ' + Buffer.from(auth).toString('base64');
+            const req = http.request({
+                hostname: u.hostname, port: u.port || 8080, path: 'www.google.com:443',
+                method: 'CONNECT', headers,
+            }, (res) => {
+                res.resume();
+                clearTimeout(timer);
+                if (res.statusCode === 200) finish(true, 'ok');
+                else if (res.statusCode === 407) finish(false, '407 Proxy Authentication Required — check credentials');
+                else finish(false, `HTTP ${res.statusCode}`);
+            });
+            req.on('timeout', () => { clearTimeout(timer); req.destroy(); finish(false, 'timeout'); });
+            req.on('error', (e) => { clearTimeout(timer); finish(false, `connect error: ${e.message}`); });
+            req.end();
+        } catch (e) { clearTimeout(timer); finish(false, `bad proxy url: ${e.message}`); }
+    });
 }
 
 async function loadCache() {
@@ -272,6 +304,20 @@ async function scrape(url, options = {}) {
     }
 
     const proxies = CONFIG.skipProxy ? [] : loadProxies();
+
+    // Pre-flight: if proxies are configured, verify auth before launching browser
+    if (proxies.length > 0) {
+        console.log(`[scrape] probing ${proxies.length} proxy(ies) for auth…`);
+        for (const p of proxies) {
+            const probe = await probeProxyAuth(p);
+            if (!probe.ok) {
+                console.error(`[scrape] proxy auth failed: ${p.server} → ${probe.reason}`);
+                return { ok: false, reason: 'proxy_auth_failed', hint: `Proxy ${p.server} rejected credentials. Fix proxies.txt or remove it to run direct.` };
+            }
+            console.log(`[scrape] ✓ ${p.server} auth ok`);
+        }
+    }
+
     const result = await raceProxies(proxies);
 
     if (result.ok) {
