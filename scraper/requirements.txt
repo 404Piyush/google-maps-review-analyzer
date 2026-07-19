@@ -1,0 +1,11 @@
+flask>=3.0.0
+gunicorn>=21.2.0
+selenium>=4.17.2
+webdriver-manager>=3.5.2
+beautifulsoup4>=4.12.3
+requests>=2.33.0
+numpy>=1.26.0
+pandas>=2.0.0
+pytz>=2024.1
+termcolor>=2.4.0
+crayons>=0.4.0

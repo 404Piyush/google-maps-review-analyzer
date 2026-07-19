@@ -1,40 +1,50 @@
-# Dockerfile.gosom — bundles the official gosom/google-maps-scraper image
-# with our Node.js auth + NDJSON proxy wrapper.
-#
-# gosom does the actual scraping; gosom-proxy.js adds SCRAPER_API_KEY auth
-# and streams results in our existing NDJSON format that Vercel /api/scrape
-# already understands.
+# Dockerfile — Python scraper service using gaspa93's GoogleMapsScraper
+# Runs Flask + Gunicorn on PORT. Hits Google Maps without proxies (Selenium
+# browser fingerprints work for low-volume single-URL scrapes on datacenter IPs
+# — Render's outbound IPs cycle frequently enough to avoid immediate blocks).
 
-FROM gosom/google-maps-scraper:latest AS gosom
-# Inherit gosom's Playwright browser + binary from the official image.
+FROM python:3.12-slim-bookworm
 
-FROM node:20-bookworm-slim
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    CHROME_BIN=/usr/bin/chromium \
+    CHROMEDRIVER_PATH=/usr/bin/chromedriver \
+    PORT=8080
+
+# System packages: Chromium (Selenium-controlled browser) + chromedriver + fonts.
+# Debian bookworm has chromium 120 in apt, paired with chromium-driver.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        ca-certificates tini \
+        chromium chromium-driver \
+        fonts-liberation libasound2 libnss3 libnspr4 libatk1.0-0 \
+        libatk-bridge2.0-0 libcups2 libdrm2 libdbus-1-3 libxkbcommon0 \
+        libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 \
+        libpango-1.0-0 libcairo2 libatspi2.0-0 \
+        ca-certificates curl tini \
     && rm -rf /var/lib/apt/lists/*
 
-# Pull the binary + Playwright browser cache from the official gosom image
-COPY --from=gosom /usr/bin/google-maps-scraper /usr/local/bin/google-maps-scraper
-COPY --from=gosom /opt/browsers /opt/browsers
-COPY --from=gosom /opt/ms-playwright-go /opt/ms-playwright-go
-ENV PLAYWRIGHT_BROWSERS_PATH=/opt/browsers
-
 WORKDIR /app
-COPY package.json package-lock.json* ./
-RUN npm install --omit=dev --no-audit --no-fund
-COPY gosom-proxy.js ./
 
-ENV PORT=8080
-ENV GOSOM_INTERNAL_PORT=8888
-ENV GOSOM_API=http://127.0.0.1:8888
-ENV SCRAPER_API_KEY=
+# Python deps first (cached layer)
+COPY scraper/requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# App code
+COPY scraper/ ./scraper/
+
+# Patch googlemaps.py to use system chromedriver + add --no-sandbox (required when
+# running Chromium as root inside a container) + disable-dev-shm-usage (smaller /dev/shm)
+RUN sed -i "s|webdriver.Chrome(service=Service()|webdriver.Chrome(service=Service(executable_path='/usr/bin/chromedriver')|" \
+        scraper/googlemaps.py && \
+    sed -i "s|options.add_argument(\"--headless=new\")|options.add_argument(\"--headless=new\"); options.add_argument(\"--no-sandbox\"); options.add_argument(\"--disable-dev-shm-usage\"); options.add_argument(\"--disable-gpu\")|" \
+        scraper/googlemaps.py
 
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-    CMD node -e "require('http').get('http://127.0.0.1:8080/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+    CMD curl -fsS http://127.0.0.1:8080/health || exit 1
 
-RUN mkdir -p /data
-WORKDIR /data
+WORKDIR /app/scraper
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["sh", "-c", "google-maps-scraper -web -addr :${GOSOM_INTERNAL_PORT} -data-folder /data & node /app/gosom-proxy.js"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "1", "--threads", "4", \
+     "--timeout", "120", "--access-logfile", "-", "server:app"]
