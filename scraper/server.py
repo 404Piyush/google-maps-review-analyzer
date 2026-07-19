@@ -18,6 +18,7 @@ import requests
 from flask import Flask, Response, request, stream_with_context
 
 from googlemaps import GoogleMapsScraper
+from selenium.webdriver.common.by import By
 
 PORT = int(os.environ.get("PORT", 8080))
 SCRAPER_API_KEY = os.environ.get("SCRAPER_API_KEY", "")
@@ -112,28 +113,35 @@ def scrape():
             })
 
             with GoogleMapsScraper(debug=False) as scraper:
-                # DEBUG: capture screenshot for troubleshooting
+                # DEBUG: capture page info for troubleshooting
                 try:
-                    scraper.driver.save_screenshot("/tmp/debug_initial.png")
-                    yield ndjson({"type": "progress", "stage": "screenshot_initial",
-                                  "path": "/tmp/debug_initial.png"})
+                    title = scraper.driver.title
+                    url_now = scraper.driver.current_url
+                    page_src_len = len(scraper.driver.page_source)
+                    # Look for Sort button explicitly
+                    sort_btns = scraper.driver.find_elements(By.XPATH, '//button[@data-value=\'Sort\']')
+                    review_divs = scraper.driver.find_elements(By.XPATH, '//div[@data-review-id]')
+                    tabs = scraper.driver.find_elements(By.XPATH, '//button[@role=\'tab\']')
+                    yield ndjson({
+                        "type": "progress",
+                        "stage": "diagnostic",
+                        "title": title,
+                        "url": url_now,
+                        "src_len": page_src_len,
+                        "sort_btns": len(sort_btns),
+                        "review_divs": len(review_divs),
+                        "tabs": [t.text for t in tabs[:6]],
+                    })
                 except Exception as e:
-                    yield ndjson({"type": "progress", "stage": "screenshot_err",
+                    yield ndjson({"type": "progress", "stage": "diagnostic_err",
                                   "error": str(e)})
+
                 sort_err = scraper.sort_by(resolved, 1)  # 1 = newest
-                try:
-                    scraper.driver.save_screenshot("/tmp/debug_after_sort.png")
-                    yield ndjson({"type": "progress", "stage": "screenshot_after_sort",
-                                  "path": "/tmp/debug_after_sort.png"})
-                except Exception:
-                    pass
                 yield ndjson({
                     "type": "progress",
                     "stage": "sort",
                     "ok": sort_err != -1,
                     "sort_err": sort_err,
-                    "page_url": scraper.driver.current_url if hasattr(scraper, "driver") else "?",
-                    "page_title": scraper.driver.title if hasattr(scraper, "driver") else "?",
                 })
                 if sort_err == -1:
                     error_msg = "sort_by failed (couldn't click Sort dropdown — Google may have blocked)"
