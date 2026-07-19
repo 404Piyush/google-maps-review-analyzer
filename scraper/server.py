@@ -112,12 +112,28 @@ def scrape():
             })
 
             with GoogleMapsScraper(debug=False) as scraper:
+                # DEBUG: capture screenshot for troubleshooting
+                try:
+                    scraper.driver.save_screenshot("/tmp/debug_initial.png")
+                    yield ndjson({"type": "progress", "stage": "screenshot_initial",
+                                  "path": "/tmp/debug_initial.png"})
+                except Exception as e:
+                    yield ndjson({"type": "progress", "stage": "screenshot_err",
+                                  "error": str(e)})
                 sort_err = scraper.sort_by(resolved, 1)  # 1 = newest
+                try:
+                    scraper.driver.save_screenshot("/tmp/debug_after_sort.png")
+                    yield ndjson({"type": "progress", "stage": "screenshot_after_sort",
+                                  "path": "/tmp/debug_after_sort.png"})
+                except Exception:
+                    pass
                 yield ndjson({
                     "type": "progress",
                     "stage": "sort",
                     "ok": sort_err != -1,
                     "sort_err": sort_err,
+                    "page_url": scraper.driver.current_url if hasattr(scraper, "driver") else "?",
+                    "page_title": scraper.driver.title if hasattr(scraper, "driver") else "?",
                 })
                 if sort_err == -1:
                     error_msg = "sort_by failed (couldn't click Sort dropdown — Google may have blocked)"
