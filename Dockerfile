@@ -32,11 +32,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 # App code
 COPY scraper/ ./scraper/
 
-# Patch googlemaps.py to use system chromedriver + add --no-sandbox (required when
-# running Chromium as root inside a container) + disable-dev-shm-usage (smaller /dev/shm)
+# Patch googlemaps.py to use system chromedriver + real chromium binary +
+# container-safe flags. /usr/bin/chromium on Debian is a shell wrapper that
+# exports CHROMIUM_FLAGS and exec's /usr/lib/chromium/chromium — Selenium
+# needs the real binary path because the wrapper isn't a valid executable.
 RUN sed -i "s|webdriver.Chrome(service=Service()|webdriver.Chrome(service=Service(executable_path='/usr/bin/chromedriver')|" \
         scraper/googlemaps.py && \
-    sed -i "s|options.add_argument(\"--headless=new\")|options.add_argument(\"--headless=new\"); options.add_argument(\"--no-sandbox\"); options.add_argument(\"--disable-dev-shm-usage\"); options.add_argument(\"--disable-gpu\")|" \
+    sed -i "s|options.add_argument(\"--headless=new\")|options.binary_location='/usr/lib/chromium/chromium'; options.add_argument(\"--headless=new\"); options.add_argument(\"--no-sandbox\"); options.add_argument(\"--disable-dev-shm-usage\"); options.add_argument(\"--disable-gpu\")|" \
         scraper/googlemaps.py
 
 EXPOSE 8080
