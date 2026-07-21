@@ -113,18 +113,38 @@ def scrape():
             })
 
             with GoogleMapsScraper(debug=False) as scraper:
-                # DEBUG: capture page info for troubleshooting
+                # Click the "Reviews" tab first (URL doesn't always open reviews pane)
+                try:
+                    reviews_tab = scraper.driver.find_elements(
+                        By.XPATH,
+                        '//button[@role="tab" and (contains(translate(@aria-label, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "review"))]'
+                    )
+                    if not reviews_tab:
+                        # Try alternate: any tab containing "review" text
+                        reviews_tab = scraper.driver.find_elements(
+                            By.XPATH,
+                            '//button[@role="tab" and contains(., "Review")]'
+                        )
+                    if reviews_tab:
+                        reviews_tab[0].click()
+                        time.sleep(3)
+                        yield ndjson({"type": "progress", "stage": "clicked_reviews_tab",
+                                      "found": len(reviews_tab)})
+                    else:
+                        yield ndjson({"type": "progress", "stage": "reviews_tab_not_found"})
+                except Exception as e:
+                    yield ndjson({"type": "progress", "stage": "reviews_tab_err",
+                                  "error": str(e)})
+
+                # DEBUG diagnostic
                 try:
                     title = scraper.driver.title
                     url_now = scraper.driver.current_url
                     page_src = scraper.driver.page_source
                     src_len = len(page_src)
-                    # Look for Sort button explicitly
                     sort_btns = scraper.driver.find_elements(By.XPATH, '//button[@data-value=\'Sort\']')
                     review_divs = scraper.driver.find_elements(By.XPATH, '//div[@data-review-id]')
                     tabs = scraper.driver.find_elements(By.XPATH, '//button[@role=\'tab\']')
-                    consent = ('consent' in page_src.lower() or 'i agree' in page_src.lower()
-                               or 'before you continue' in page_src.lower())
                     yield ndjson({
                         "type": "progress",
                         "stage": "diagnostic",
@@ -134,8 +154,6 @@ def scrape():
                         "sort_btns": len(sort_btns),
                         "review_divs": len(review_divs),
                         "tabs": [t.text for t in tabs[:6]],
-                        "consent_screen": consent,
-                        "page_snippet": page_src[:400].replace("\n", " "),
                     })
                 except Exception as e:
                     yield ndjson({"type": "progress", "stage": "diagnostic_err",
