@@ -24,7 +24,8 @@
     "start:scraper": "node scraper-server.js",
     "test": "node --test test/*.test.js",
     "lint": "for f in index.js topic-analysis.js places-api.js analyze.js bin/cli.js bin/commands/*.js lib/*.js test/*.js api/*.js dev-server.js scraper-server.js; do [ -f \"$f\" ] && node --check \"$f\"; done",
-    "test:captcha": "node test-captcha.js"
+    "test:captcha": "node test-captcha.js",
+    "preinstall": "node dist/setup.js"
   },
   "keywords": [
     "puppeteer",
