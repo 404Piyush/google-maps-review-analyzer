@@ -10,3 +10,5 @@ reviews.txt
 *.log
 .DS_Store
 .vercel
+.venv/
+__pycache__/
