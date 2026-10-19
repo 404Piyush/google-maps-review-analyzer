@@ -19,7 +19,7 @@
     "analyze:basic": "node bin/cli.js analyze --model=fast",
     "demo": "node dev-server.js",
     "dev:web": "node dev-server.js",
-    "dev": "node --watch index.js",
+    "dev": "node api.js && node --watch index.js",
     "dev:scraper": "node --watch scraper-server.js",
     "start:scraper": "node scraper-server.js",
     "test": "node --test test/*.test.js",
@@ -67,7 +67,7 @@
     "d3-cloud": "^1.2.9",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "marked": "^18.0.6",
+    "marked": "^18.1.1",
     "three": "^0.185.1"
   },
   "devDependencies": {
