@@ -19,7 +19,7 @@
     "analyze:basic": "node bin/cli.js analyze --model=fast",
     "demo": "node dev-server.js",
     "dev:web": "node dev-server.js",
-    "dev": "node --watch index.js",
+    "dev": "node api.js && node --watch index.js",
     "dev:scraper": "node --watch scraper-server.js",
     "start:scraper": "node scraper-server.js",
     "test": "node --test test/*.test.js",
@@ -71,7 +71,7 @@
     "three": "^0.185.1"
   },
   "devDependencies": {
-    "@types/node": "^20.10.4"
+    "@types/node": "^26.6.5"
   },
   "optionalDependencies": {
     "puppeteer": "^21.6.1",
